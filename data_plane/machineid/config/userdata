@@ -1,7 +1,7 @@
 #!/bin/bash
 #########################################################
-# Self hosted mongodb install with Teleport
-# Based on https://goteleport.com/docs/database-access/guides/mongodb-self-hosted/
+# ansible machine id install
+# OS naming/tool installs
 #########################################################
 sudo hostnamectl set-hostname "ansible"
 sudo apt update && sudo apt upgrade -y 
@@ -9,11 +9,11 @@ sudo apt install -y net-tools cowsay jq
 ########################################################
 # teleport installation
 #########################################################
-# Installs teleport enterprise edition 
+# installs teleport enterprise edition for ubuntu
 sudo curl https://apt.releases.teleport.dev/gpg -o /usr/share/keyrings/teleport-archive-keyring.asc
 source /etc/os-release
 echo "deb [signed-by=/usr/share/keyrings/teleport-archive-keyring.asc] \
-https://apt.releases.teleport.dev/$${ID?} $${VERSION_CODENAME?} stable/rolling" \
+https://apt.releases.teleport.dev/$${ID?} $${VERSION_CODENAME?} stable/v${major}" \
 | sudo tee /etc/apt/sources.list.d/teleport.list > /dev/null
 sudo apt-get update
 sudo apt-get install teleport-ent
@@ -113,11 +113,11 @@ LimitNOFILE=524288
 [Install]
 WantedBy=multi-user.target
 EOF
+
 # brings the service up
 sudo systemctl daemon-reload
 sudo systemctl enable tbot
 sudo systemctl start tbot
-
 #########################################################
 # ansible configuration
 #########################################################
@@ -133,8 +133,9 @@ remote_tmp=/tmp
 
 [ssh_connection]
 scp_if_ssh = True
-ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o CanonicalDomains=${domain}
+ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o CanonicalizeMaxDots=10 -o CanonicalDomains=${domain}
 EOF
+
 sudo cat <<-EOF > /home/ubuntu/ansible/playbook.yaml
 - hosts: all
   remote_user: root
@@ -143,7 +144,8 @@ sudo cat <<-EOF > /home/ubuntu/ansible/playbook.yaml
       command: "hostname"
 
 EOF
+
 sudo chown -R ubuntu:ubuntu /home/ubuntu/ansible
-# updates permissions in the machineid output directory for the ubuntu user to gain access 
-sudo chmod 660 -R /opt/machine-id/*
+# updates permissions in the machineid output directory for the ubuntu user to gain access to the files 
+sudo chmod 640 -R /opt/machine-id/*
 #########################################################
