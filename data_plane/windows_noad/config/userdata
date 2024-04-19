@@ -1,0 +1,72 @@
+#!/bin/bash
+#########################################################
+# amzlinux jump host for Windows Desktop
+# Installs system tools for troubleshooting
+#########################################################
+sudo hostnamectl set-hostname windows-jump
+sudo dnf install -y net-tools vim wget
+#########################################################
+# teleport installation 
+#########################################################
+# Installs teleport enterprise edition 
+source /etc/os-release
+VERSION_ID=$(echo $${VERSION_ID} | grep -Eo "^[0-9]+")
+NAME='_arch'
+sudo dnf config-manager --add-repo "$(rpm --eval "https://yum.releases.teleport.dev/$${ID}/$${VERSION_ID}/Teleport/%%{$${NAME}}/stable/v15/teleport.repo")"
+sudo dnf install teleport-ent -y
+#########################################################
+# teleport configuration
+#########################################################
+ Creates teleport configuration file
+sudo cat << EOF > /etc/teleport.yaml
+version: v3
+teleport:
+  data_dir: "/var/lib/teleport"
+  auth_token: /var/lib/teleport/token
+  proxy_server: ${domain}:443
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: json
+app_service:
+  enabled: false
+auth_service:
+  enabled: false
+db_service:
+  enabled: false
+discovery_service:
+  enabled: true
+kubernetes_service:
+  enabled: false
+proxy_service:
+  enabled: false
+ssh_service:
+  enabled: true
+  commands:
+  - name: hostname
+    command: [hostname]
+    period: 1m0s
+  labels:
+    role: windows-jump
+    environment: prod
+    cloud: aws
+    os: amz-lin
+  enhanced_recording:
+    enabled: true
+windows_desktop_service:
+  enabled: yes
+  non_ad_hosts:
+  - ${windows_internal_dns}
+  host_labels:
+  - match: '.*\.us-east-2.compute.internal'
+    labels:
+      environment: dev
+      cloud: aws
+      os: windows
+EOF
+
+echo ${token} > /var/lib/teleport/token
+# Sets teleport service to start at boot and brings it up
+systemctl enable teleport;
+systemctl restart teleport;
