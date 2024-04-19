@@ -19,19 +19,13 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
   identity_file_path = "/tmp/terraform-output/identity"
 }
-provider "random" {
 
-}
-##################################################################################
-##################################################################################
-# DATA SOURCES
-##################################################################################
-data "http" "myip" {
-  url = "http://ipv4.icanhazip.com"
+provider "random" {
 }
 ##################################################################################
 # RESOURCES
@@ -40,28 +34,6 @@ resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
-}
-
-resource "aws_security_group" "ssh" {
-  depends_on = [aws_vpc.main]
-  vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "dlg-sg"
-  }
-  name        = "allow local traffic"
-  description = "traffic for private net and egress"
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 resource "aws_security_group" "local" {
@@ -149,16 +121,12 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-resource "random_string" "pass" {
-  length = 36
-}
-
 resource "aws_instance" "windows" {
   depends_on = [
     aws_vpc.main,
     aws_subnet.private
   ]
-  ami                         = "ami-079e6e7a0a7640784"
+  ami                         = "ami-0b2167681856cd65e"
   instance_type               = "t3.small"
   key_name                    = var.ssh_key
   associate_public_ip_address = true
@@ -205,7 +173,7 @@ resource "aws_instance" "linux_jump" {
   ami                    = "ami-01103fb68b3569475"
   instance_type          = "t3.micro"
   key_name               = var.ssh_key
-  vpc_security_group_ids = [aws_security_group.ssh.id]
+  vpc_security_group_ids = [aws_security_group.local.id]
   subnet_id              = aws_subnet.public.id
   user_data = templatefile("./config/userdata", {
     token                = teleport_provision_token.linux_jump.metadata.name
@@ -228,16 +196,7 @@ resource "aws_instance" "linux_jump" {
 ##################################################################################
 # OUTPUT
 ##################################################################################
-output "windows_public_dns" {
-  value = aws_instance.windows.public_dns
-}
-output "windows_public_ip" {
-  value = aws_instance.windows.public_ip
-}
-output "linux_public_ip" {
-  value = aws_instance.linux_jump.public_ip
-}
-output "password_decrypted" {
-  value = rsadecrypt(aws_instance.windows.password_data, file("~/.ssh/dlg-aws.pem"))
+output "windows_private_dns" {
+  value = aws_instance.windows.private_dns
 }
 ##################################################################################
