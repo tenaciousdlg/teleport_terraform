@@ -30,6 +30,12 @@ provider "random" {
 ##################################################################################
 # RESOURCES
 ##################################################################################
+# instance networking
+resource "random_string" "uuid" {
+  length  = 4
+  special = false
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -40,10 +46,10 @@ resource "aws_security_group" "local" {
   depends_on = [aws_vpc.main]
   vpc_id     = aws_vpc.main.id
   tags = {
-    Name = "private net"
+    Name = "${var.user}-sg-${random_string.uuid.result}"
   }
   name        = "allow_local"
-  description = "allow private network traffic"
+  description = "allow private network traffic and internet egress"
   ingress {
     from_port   = 0
     to_port     = 0
@@ -62,7 +68,7 @@ resource "aws_internet_gateway" "main" {
   depends_on = [aws_vpc.main]
   vpc_id     = aws_vpc.main.id
   tags = {
-    Name = "dlg-ig"
+    Name = "${var.user}-ig-${random_string.uuid.result}"
   }
 }
 
@@ -72,7 +78,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
   vpc_id                  = aws_vpc.main.id
   tags = {
-    Name = "dlg_public_net"
+    Name = "${var.user}-prsubnet-${random_string.uuid.result}"
   }
 }
 
@@ -81,7 +87,7 @@ resource "aws_subnet" "private" {
   cidr_block = "10.0.1.0/24"
   vpc_id     = aws_vpc.main.id
   tags = {
-    Name = "dlg_private_net"
+    Name = "${var.user}-prsubnet-${random_string.uuid.result}"
   }
 }
 
@@ -89,7 +95,7 @@ resource "aws_route_table" "public" {
   depends_on = [aws_vpc.main, aws_internet_gateway.main]
   vpc_id     = aws_vpc.main.id
   tags = {
-    Name = "public route"
+    Name = "${var.user}-prt-${random_string.uuid.result}"
   }
   route {
     cidr_block = "0.0.0.0/0"
@@ -101,7 +107,7 @@ resource "aws_route_table" "private" {
   depends_on = [aws_vpc.main, aws_internet_gateway.main]
   vpc_id     = aws_vpc.main.id
   tags = {
-    Name = "private route"
+    Name = "${var.user}-prrt-${random_string.uuid.result}"
   }
   route {
     cidr_block = "0.0.0.0/0"
@@ -121,19 +127,29 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+# windows instance configuration
+## Add data source for Windows AMI
+resource "random_string" "windows" {
+  length = 40
+}
+
 resource "aws_instance" "windows" {
   depends_on = [
     aws_vpc.main,
     aws_subnet.private
   ]
   ami                         = "ami-0b2167681856cd65e"
-  instance_type               = "t3.small"
+  instance_type               = "t3.medium"
   key_name                    = var.ssh_key
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.private.id
   vpc_security_group_ids      = [aws_security_group.local.id]
   get_password_data           = true
-  user_data                   = file("./config/windows.ps1")
+  user_data = templatefile("${path.module}/config/windows.tftpl", {
+    User     = "${var.win_user}"
+    Password = random_string.windows.result
+    Version  = "${var.teleport_version}"
+  })
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"
@@ -144,17 +160,19 @@ resource "aws_instance" "windows" {
   }
   # Prevents resource being recreated for minor versions of AMI 
   tags = {
-    Name    = "dlg-windows"
-    Purpose = "windows demo non-AD"
+    Name    = "${var.user}-windows-${random_string.uuid.result}"
+    Purpose = "teleport windows demo non-AD"
+    Env     = "dev"
   }
 }
-
+# linux instance configuration 
+## add Data Source for Linux AMI 
 resource "random_string" "token" {
   length = 32
 }
 
 resource "teleport_provision_token" "linux_jump" {
-  version = "v2"
+  version = "v2" # required >teleport 15
   spec = {
     roles = [
       "Node",
@@ -189,14 +207,15 @@ resource "aws_instance" "linux_jump" {
     encrypted = true
   }
   tags = {
-    Name    = "dlg-windows-jump"
-    Purpose = "windows demo non-AD"
+    Name    = "${var.user}-jump-${random_string.uuid.result}"
+    Purpose = "teleport windows demo non-AD"
+    Env     = "dev"
   }
 }
 ##################################################################################
 # OUTPUT
 ##################################################################################
-output "windows_private_dns" {
+output "desktop_name_in_teleport" {
   value = aws_instance.windows.private_dns
 }
 ##################################################################################

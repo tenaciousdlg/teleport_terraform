@@ -48,8 +48,7 @@ ssh_service:
     command: [hostname]
     period: 1m0s
   labels:
-    role: windows-jump
-    environment: prod
+    env: dev
     cloud: aws
     os: amz-lin
   enhanced_recording:
@@ -61,7 +60,7 @@ windows_desktop_service:
   host_labels:
   - match: '.*\.us-east-2.compute.internal'
     labels:
-      environment: dev
+      env: dev
       cloud: aws
       os: windows
 EOF

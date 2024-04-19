@@ -27,3 +27,13 @@ variable "teleport_version" {
   type        = string
   description = "Version of Teleport to install on each agent"
 }
+
+variable "win_user" {
+  type        = string
+  description = "name of local windows user (e.g. bob)"
+}
+
+variable "user" {
+  type        = string
+  description = "username assgined in description for AWS resources"
+}
