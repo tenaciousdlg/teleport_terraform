@@ -35,3 +35,33 @@ user                  = "alice"
 3. Run `terraform apply` 
 
 4. Login to your Teleport Cluster via the GUI to access the Windows Desktop
+
+## Reference
+
+* Teleport Role allowing access for Bob written in Terraform
+
+```
+resource "teleport_role" "windows_bob" {
+  version = "v6"
+  metadata = {
+    name        = "windows_bob"
+    description = "Example role for Windows login for user Bob"
+  }
+  spec = {
+    options = {
+      record_session = {
+        desktop = true
+      }
+      desktop_clipboard   = false
+      create_desktop_user = true
+    }
+    allow = {
+      windows_desktop_labels = {
+        "environment" = ["dev", "stage"],
+        "cloud"       = ["aws"]
+      }
+      windows_desktop_logins = ["bob"]
+    }
+  }
+}
+```
