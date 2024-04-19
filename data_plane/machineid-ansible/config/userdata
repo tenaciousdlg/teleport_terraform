@@ -1,0 +1,151 @@
+#!/bin/bash
+#########################################################
+# ansible machine id install
+# OS naming/tool installs
+#########################################################
+sudo hostnamectl set-hostname "ansible"
+sudo apt update && sudo apt upgrade -y 
+sudo apt install -y net-tools cowsay jq
+########################################################
+# teleport installation
+#########################################################
+# installs teleport enterprise edition for ubuntu
+sudo curl https://apt.releases.teleport.dev/gpg -o /usr/share/keyrings/teleport-archive-keyring.asc
+source /etc/os-release
+echo "deb [signed-by=/usr/share/keyrings/teleport-archive-keyring.asc] \
+https://apt.releases.teleport.dev/$${ID?} $${VERSION_CODENAME?} stable/v${major}" \
+| sudo tee /etc/apt/sources.list.d/teleport.list > /dev/null
+sudo apt-get update
+sudo apt-get install teleport-ent
+echo ${token} > /var/lib/teleport/token
+#########################################################
+## teleport configuration (for SSH access to node)
+#########################################################
+sudo cat <<-EOF > /etc/teleport.yaml
+version: v3
+teleport:
+  data_dir: "/var/lib/teleport"
+  proxy_server: "${domain}:443"
+  auth_token: "/var/lib/teleport/token"
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: json
+db_service:
+  enabled: "no"
+auth_service:
+  enabled: "no"
+ssh_service:
+  enabled: "yes"
+  commands:
+  - name: hostname
+    command: [hostname]
+    period: 1m0s
+  labels:
+    tier: stage
+    env: stage
+    os: ubuntu
+    cloud: aws
+    ansible: main
+  enhanced_recording:
+    enabled: true
+proxy_service:
+  enabled: "no"
+app_service:
+  enabled: "no"
+EOF
+systemctl enable teleport
+systemctl restart teleport
+#########################################################
+## tbot configuration (for ansible credentials)
+#########################################################
+sudo cat <<-EOF > /etc/tbot.yaml
+version: v2
+auth_server: ${domain}:443
+onboarding:
+  join_method: token
+  token: ${bot_token}
+storage:
+  type: directory
+  path: /var/lib/teleport/bot
+outputs:
+- type: identity
+  destination:
+    type: directory
+    # For this guide, /opt/machine-id is used as the destination directory.
+    # You may wish to customize this. Multiple outputs cannot share the same
+    # destination.
+    path: /opt/machine-id
+EOF
+#########################################################
+# teleport system configuration 
+#########################################################
+# creates a data directory for teleport services
+sudo mkdir -p /var/lib/teleport/bot
+# adds a OS user called teleport that registers as a system user 
+sudo useradd --system teleport
+# gives the system user teleport ownership of the teleport data dir 
+sudo chown -R teleport:teleport /var/lib/teleport/
+# creates the output dir for machineID(tbot)
+sudo mkdir -p /opt/machine-id
+# gives the teleport user ownership of the machineID output dir
+sudo chown -R teleport:teleport /opt/machine-id 
+# adds the ubuntu user to the teleport group
+sudo usermod -aG teleport ubuntu 
+# creates a systemd unit file for the tbot service
+sudo cat <<-EOF > /etc/systemd/system/tbot.service
+[Unit]
+Description=Teleport Machine ID Service
+After=network.target
+
+[Service]
+Type=simple
+User=teleport
+Group=teleport
+Restart=on-failure
+Environment="TELEPORT_ANONYMOUS_TELEMETRY=1"
+ExecStart=/usr/local/bin/tbot start -c /etc/tbot.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/run/tbot.pid
+LimitNOFILE=524288
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# brings the service up
+sudo systemctl daemon-reload
+sudo systemctl enable tbot
+sudo systemctl start tbot
+#########################################################
+# ansible configuration
+#########################################################
+sudo apt-add-repository ppa:ansible/ansible -y
+sudo apt update
+sudo apt install ansible -y
+sudo mkdir /home/ubuntu/ansible
+sudo cat <<-EOF > /home/ubuntu/ansible/ansible.cfg
+[defaults]
+host_key_checking = True
+inventory=./hosts
+remote_tmp=/tmp
+
+[ssh_connection]
+scp_if_ssh = True
+ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o CanonicalizeMaxDots=10 -o CanonicalDomains=${domain}
+EOF
+
+sudo cat <<-EOF > /home/ubuntu/ansible/playbook.yaml
+- hosts: all
+  remote_user: root
+  tasks:
+    - name: "hostname"
+      command: "hostname"
+
+EOF
+
+sudo chown -R ubuntu:ubuntu /home/ubuntu/ansible
+# updates permissions in the machineid output directory for the ubuntu user to gain access to the files 
+sudo chmod 640 -R /opt/machine-id/*
+#########################################################
