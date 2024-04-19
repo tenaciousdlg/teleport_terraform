@@ -13,7 +13,7 @@ New-LocalUser -Name $User -Password $Password -FullName $User
 Add-LocalGroupMember -Group "Remote Desktop Users” -Member $User
 Add-LocalGroupMember -Group "Administrators" -Member $User
 Invoke-WebRequest -Uri https://teleport.chrisdlg.com/webapi/auth/export?type=windows -OutFile teleport.cer
-Invoke-WebRequest -Uri https://cdn.teleport.dev/teleport-windows-auth-setup-v14.1.0-amd64.exe -Outfile teleport-windows-auth-setup.exe
+Invoke-WebRequest -Uri https://cdn.teleport.dev/teleport-windows-auth-setup-v15.2.0-amd64.exe -Outfile teleport-windows-auth-setup.exe
 .\teleport-windows-auth-setup.exe install --cert=teleport.cer -r
 Rename-Computer -NewName "teleport-desktop-example" -Force -Restart
 </powershell>
