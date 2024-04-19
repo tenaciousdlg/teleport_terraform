@@ -4,7 +4,7 @@ This repo is based on the [local Windows user](https://goteleport.com/docs/deskt
 ## Prereqs
 * An identity to authenticate against your Teleport cluster (e.g. Identity File supplied by a [Machine ID](https://goteleport.com/docs/machine-id/access-guides/terraform/) process). 
 
-* A Teleport Role allowing access for the value of `win_user`. The referneced guide provides an example. The following labels are added to both instances for reference in a Role.
+* A Teleport Role allowing access for the value of `win_user` for your Teleport user. The referneced guide provides an example. The following labels are added to both instances for reference in a Role. 
 
 ```
 env: dev
