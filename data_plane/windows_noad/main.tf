@@ -186,6 +186,7 @@ resource "random_string" "token" {
 }
 
 resource "teleport_provision_token" "linux_jump" {
+  version = "v2"
   spec = {
     roles = [
       "Node",
