@@ -9,7 +9,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "14.0.0"
+      version = "15.2.0"
     }
   }
   required_version = ">= 1.2.0"
