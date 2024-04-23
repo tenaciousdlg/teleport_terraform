@@ -37,3 +37,8 @@ variable "user" {
   type        = string
   description = "username assgined in description for AWS resources"
 }
+
+#test
+variable "identity_path" {
+  type = string
+}

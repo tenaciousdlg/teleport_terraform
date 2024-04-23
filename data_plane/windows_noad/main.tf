@@ -22,7 +22,7 @@ provider "aws" {
 
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
-  identity_file_path = "/tmp/terraform-output/identity"
+  identity_file_path = "${var.identity_path}"
 }
 
 provider "random" {

@@ -20,6 +20,7 @@ cloud: aws
 ```
 teleport_version      = "15.2.0"
 proxy_service_address = "teleport.example.com"
+identity_path         = "/path/to/identity/file"
 aws_region            = "us-east-1"
 ssh_key               = "key-1"
 win_user              = "bob"
