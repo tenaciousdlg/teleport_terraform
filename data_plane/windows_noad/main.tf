@@ -22,7 +22,7 @@ provider "aws" {
 
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
-  identity_file_path = "${var.identity_path}"
+  identity_file_path = var.identity_path
 }
 
 provider "random" {
@@ -37,7 +37,7 @@ resource "random_string" "uuid" {
 }
 
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.cidr_vpc
   enable_dns_hostnames = true
   enable_dns_support   = true
 }
