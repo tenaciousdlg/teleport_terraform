@@ -9,16 +9,3 @@ variable "user" {
   type        = string
   default     = "terraform"
 }
-
-# variables related to dns deployment. May be optional depending on your configuration 
-variable "domain_name" {
-  description = "domain name to query"
-  default     = "foo.com"
-  type        = string
-}
-
-variable "subdomain" {
-  description = "subdoman for teleport off domain_name variable"
-  default     = "v16"
-  type        = string
-}
