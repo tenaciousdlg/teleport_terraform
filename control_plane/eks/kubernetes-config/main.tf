@@ -88,6 +88,8 @@ proxyListenerMode: multiplex
 acme: true
 acmeEmail: "${var.email}"
 enterprise: true
+operator:
+  enabled: true
 EOF
   ]
 }
