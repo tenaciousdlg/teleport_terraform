@@ -48,6 +48,19 @@ resource "local_sensitive_file" "kubeconfig" {
   filename = "./kubeconfig-${var.cluster_name}"
 }
 
+resource "kubernetes_secret" "license" {
+  metadata {
+    name      = "license"
+    namespace = "default"
+  }
+
+  data = {
+    "license.pem" = file("${path.module}./license.pem")
+  }
+
+  type = "Opaque"
+}
+
 # defines helm release for teleport cluster
 resource "helm_release" "teleport_cluster" {
   namespace = "default"
@@ -61,11 +74,11 @@ resource "helm_release" "teleport_cluster" {
   version    = var.teleport_ver
   values = [
     <<EOF
-clusterName: "v16.${var.domain_name}"
+clusterName: "dlgtest.${var.domain_name}"
 proxyListenerMode: multiplex
 acme: true
 acmeEmail: "${var.email}"
-enterprise: false
+enterprise: true
 EOF
   ]
 }
@@ -84,7 +97,7 @@ data "aws_route53_zone" "main" {
 # Create DNS records for EKS cluster (based on previously queried Zone)
 resource "aws_route53_record" "cluster_endpoint" {
   zone_id    = data.aws_route53_zone.main.zone_id
-  name       = "v16.${var.domain_name}"
+  name       = "dlgtest.${var.domain_name}"
   type       = "CNAME"
   ttl        = "300"
   records    = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
@@ -92,7 +105,7 @@ resource "aws_route53_record" "cluster_endpoint" {
 
 resource "aws_route53_record" "wild_cluster_endpoint" {
   zone_id    = data.aws_route53_zone.main.zone_id
-  name       = "*.v16.${var.domain_name}"
+  name       = "*.dlgtest.${var.domain_name}"
   type       = "CNAME"
   ttl        = "300"
   records    = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
