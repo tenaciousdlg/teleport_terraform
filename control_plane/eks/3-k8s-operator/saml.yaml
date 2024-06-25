@@ -3,10 +3,10 @@ kind: TeleportSAMLConnector
 metadata:
   name: okta
 spec:
-  acs: "https://v16.teleportdemo.com:443/v1/webapi/saml/acs/okta"
+  acs: "https://v16.$DOMAIN.com:443/v1/webapi/saml/acs/okta"
   attributes_to_roles:
     - {name: "groups", value: "Everyone", roles: ["requester"]}
     - {name: "groups", value: "admins", roles: ["access", "editor", "reviewer", "auditor", "group-access"]}
   display: "okta"
-  entity_descriptor_url: "https://dev-94466015.okta.com/app/exkhxwe3ncnGyjry55d7/sso/saml/metadata"
-  service_provider_issuer: "https://dev-94466015.okta.com/app/exkhxwe3ncnGyjry55d7/sso/saml/metadata"
+  entity_descriptor_url: "https://$OKTASSO/sso/saml/metadata"
+  service_provider_issuer: "https://$OKTASSO/sso/saml/metadata"
