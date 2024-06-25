@@ -146,3 +146,7 @@ module "ebs_csi_driver_irsa" {
 
   tags = local.tags
 }
+
+output "elb_dns_name" {
+  value = data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname
+}
