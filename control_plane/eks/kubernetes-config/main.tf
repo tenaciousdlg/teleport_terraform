@@ -38,7 +38,7 @@ provider "helm" {
   }
 }
 
-# defines config for k8s config file
+# creates k8s config file for cluster
 resource "local_sensitive_file" "kubeconfig" {
   content = templatefile("${path.module}/kubeconfig.tpl", {
     cluster_name = var.cluster_name,
@@ -48,6 +48,7 @@ resource "local_sensitive_file" "kubeconfig" {
   filename = "./kubeconfig-${var.cluster_name}"
 }
 
+# creates ent license as k8s secret
 resource "kubernetes_secret" "license" {
   metadata {
     name      = "license"
@@ -55,12 +56,14 @@ resource "kubernetes_secret" "license" {
   }
 
   data = {
+    # the path module creates a . so only one . is appended to it which inferes .. (the dir above)
     "license.pem" = file("${path.module}./license.pem")
   }
 
   type = "Opaque"
 }
 
+# creates namespace for teleport cluster per https://goteleport.com/docs/ver/15.x/deploy-a-cluster/helm-deployments/kubernetes-cluster/#install-the-teleport-cluster-helm-chart
 resource "kubernetes_namespace" "teleport_cluster" {
   metadata {
     name = "teleport-cluster"
@@ -71,6 +74,7 @@ resource "kubernetes_namespace" "teleport_cluster" {
 }
 
 # defines helm release for teleport cluster
+# teleport k8s operator is added via the operator.enabled arugmenet in the values section below
 resource "helm_release" "teleport_cluster" {
   namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
   wait      = true
@@ -94,6 +98,7 @@ EOF
   ]
 }
 
+# sources the k8s service for refernece (may be removed in future release)
 data "kubernetes_service" "teleport_cluster" {
   metadata {
     name      = helm_release.teleport_cluster.name
@@ -101,11 +106,12 @@ data "kubernetes_service" "teleport_cluster" {
   }
 }
 
+# used for creating subdomain on existing zone. zone is defined by the variable domain_name
 data "aws_route53_zone" "main" {
   name = var.domain_name
 }
 
-# Create DNS records for EKS cluster (based on previously queried Zone)
+# creates DNS record for teleport cluster on eks
 resource "aws_route53_record" "cluster_endpoint" {
   zone_id    = data.aws_route53_zone.main.zone_id
   name       = "v16.${var.domain_name}"
@@ -114,6 +120,7 @@ resource "aws_route53_record" "cluster_endpoint" {
   records    = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
 }
 
+# creates wildcard record for teleport cluster on eks 
 resource "aws_route53_record" "wild_cluster_endpoint" {
   zone_id    = data.aws_route53_zone.main.zone_id
   name       = "*.v16.${var.domain_name}"
