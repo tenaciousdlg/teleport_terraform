@@ -1,0 +1,32 @@
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: manager
+spec:
+  allow:
+    rules:
+      - resources: ['user', 'role']
+        verbs: ['list','read']
+      - resources: ['session', 'event']
+        verbs: ['list', 'read']
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: engineer
+spec:
+  allow:
+    logins: ['root', 'ubuntu', '{{internal.logins}}']
+    node_labels:
+      'env': ['test', 'staging']
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: support-engineer
+spec:
+  allow:
+    logins: [ 'root', 'ubuntu', '{{internal.logins}}' ]
+    node_labels:
+      'env': [ 'production' ]
+

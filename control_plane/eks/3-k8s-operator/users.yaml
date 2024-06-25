@@ -1,0 +1,13 @@
+apiVersion: resources.teleport.dev/v2
+kind: TeleportUser
+metadata:
+  name: alice
+spec:
+  roles: ['manager', 'engineer']
+---
+apiVersion: resources.teleport.dev/v2
+kind: TeleportUser
+metadata:
+  name: bob
+spec:
+  roles: ['engineer']
