@@ -1,6 +1,6 @@
 variable "cluster_name" {
-  type    = string
-  default = "test-cluster"
+  type        = string
+  default     = "test-cluster"
   description = "name of the cluster created in the first step (under the eks-cluster dir)"
 }
 
@@ -29,5 +29,10 @@ variable "email" {
 
 variable "teleport_ver" {
   description = "full version of teleport (e.g. 15.1.0)"
+  type        = string
+}
+
+variable "tele_name" {
+  description = "value"
   type        = string
 }

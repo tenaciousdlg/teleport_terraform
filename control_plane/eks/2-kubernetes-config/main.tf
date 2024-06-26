@@ -87,7 +87,7 @@ resource "helm_release" "teleport_cluster" {
   version    = var.teleport_ver
   values = [
     <<EOF
-clusterName: "v16.${var.domain_name}"
+clusterName: "${var.tele_name}"
 proxyListenerMode: multiplex
 acme: true
 acmeEmail: "${var.email}"
@@ -98,7 +98,7 @@ EOF
   ]
 }
 
-# sources the k8s service for refernece (may be removed in future release)
+# sources the k8s service (running on an ELB) for the value of the DNS records below
 data "kubernetes_service" "teleport_cluster" {
   metadata {
     name      = helm_release.teleport_cluster.name
@@ -113,18 +113,18 @@ data "aws_route53_zone" "main" {
 
 # creates DNS record for teleport cluster on eks
 resource "aws_route53_record" "cluster_endpoint" {
-  zone_id    = data.aws_route53_zone.main.zone_id
-  name       = "v16.${var.domain_name}"
-  type       = "CNAME"
-  ttl        = "300"
-  records    = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = var.tele_name
+  type    = "CNAME"
+  ttl     = "300"
+  records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
 }
 
 # creates wildcard record for teleport cluster on eks 
 resource "aws_route53_record" "wild_cluster_endpoint" {
-  zone_id    = data.aws_route53_zone.main.zone_id
-  name       = "*.v16.${var.domain_name}"
-  type       = "CNAME"
-  ttl        = "300"
-  records    = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "*.${var.tele_name}"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
 }
