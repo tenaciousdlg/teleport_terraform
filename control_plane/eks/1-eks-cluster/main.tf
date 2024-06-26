@@ -17,7 +17,7 @@ locals {
   azs                  = slice(data.aws_availability_zones.available.names, 0, 3)
   tags = {
     ManagedBy = "terraform"
-    owner     = var.user
+    owner     = var.name
     env       = "dev"
   }
 }
@@ -27,7 +27,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "${var.user}-eks-vpc"
+  name = "${var.name}-eks-vpc"
   cidr = local.vpc_cidr
 
   azs             = local.azs
@@ -54,7 +54,7 @@ module "eks" {
   source     = "terraform-aws-modules/eks/aws"
   version    = "~> 20.0"
 
-  cluster_name    = "${var.user}cluster"
+  cluster_name    = "${var.name}-cluster"
   cluster_version = "1.29"
 
   cluster_endpoint_public_access = true
@@ -133,7 +133,7 @@ module "ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.20"
 
-  role_name_prefix = "${var.user}cluster-ebs-csi-driver-"
+  role_name_prefix = "${var.name}-cluster-ebs-csi-driver-"
 
   attach_ebs_csi_policy = true
 
@@ -145,8 +145,4 @@ module "ebs_csi_driver_irsa" {
   }
 
   tags = local.tags
-}
-
-output "elb_dns_name" {
-  value = data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname
 }

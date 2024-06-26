@@ -4,8 +4,8 @@ variable "region" {
 }
 
 # used for tracking resources
-variable "user" {
-  description = "Name of the user deploying the infrastructure"
+variable "name" {
+  description = "Name of the EKS  deployment"
   type        = string
   default     = "terraform"
 }
