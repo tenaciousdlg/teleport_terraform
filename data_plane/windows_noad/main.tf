@@ -5,11 +5,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.39"
     }
     teleport = {
+      version = "~> 15.0"
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "15.2.0"
     }
   }
 }
@@ -18,6 +18,13 @@ terraform {
 ##################################################################################
 provider "aws" {
   region = var.aws_region
+  default_tags {
+    tags = {
+      "teleport.dev/creator" = var.user
+      "Purpose" = "teleport windows demo non-AD"
+      "Env"     = "dev"
+    }
+  }
 }
 
 provider "teleport" {
@@ -45,16 +52,13 @@ resource "aws_vpc" "main" {
 resource "aws_security_group" "local" {
   depends_on = [aws_vpc.main]
   vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-sg-${random_string.uuid.result}"
-  }
   name        = "allow_local"
   description = "allow private network traffic and internet egress"
   ingress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = [var.cidr_vpc]
   }
   egress {
     from_port   = 0
@@ -67,36 +71,24 @@ resource "aws_security_group" "local" {
 resource "aws_internet_gateway" "main" {
   depends_on = [aws_vpc.main]
   vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-ig-${random_string.uuid.result}"
-  }
 }
 
 resource "aws_subnet" "public" {
   depends_on              = [aws_vpc.main]
-  cidr_block              = "10.0.0.0/24"
+  cidr_block              = var.cidr_subnet
   map_public_ip_on_launch = true
   vpc_id                  = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-prsubnet-${random_string.uuid.result}"
-  }
 }
 
 resource "aws_subnet" "private" {
   depends_on = [aws_vpc.main]
-  cidr_block = "10.0.1.0/24"
+  cidr_block = var.cidr_subnet2
   vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-prsubnet-${random_string.uuid.result}"
-  }
 }
 
 resource "aws_route_table" "public" {
   depends_on = [aws_vpc.main, aws_internet_gateway.main]
   vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-prt-${random_string.uuid.result}"
-  }
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
@@ -106,9 +98,6 @@ resource "aws_route_table" "public" {
 resource "aws_route_table" "private" {
   depends_on = [aws_vpc.main, aws_internet_gateway.main]
   vpc_id     = aws_vpc.main.id
-  tags = {
-    Name = "${var.user}-prrt-${random_string.uuid.result}"
-  }
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
@@ -158,12 +147,6 @@ resource "aws_instance" "windows" {
     encrypted             = true
     delete_on_termination = true
   }
-  # Prevents resource being recreated for minor versions of AMI 
-  tags = {
-    Name    = "${var.user}-windows-${random_string.uuid.result}"
-    Purpose = "teleport windows demo non-AD"
-    Env     = "dev"
-  }
 }
 # linux instance configuration 
 ## add Data Source for Linux AMI 
@@ -172,7 +155,7 @@ resource "random_string" "token" {
 }
 
 resource "teleport_provision_token" "linux_jump" {
-  version = "v2" # required >teleport 15
+  version = "v2" # required > teleport 15
   spec = {
     roles = [
       "Node",
@@ -205,11 +188,6 @@ resource "aws_instance" "linux_jump" {
   }
   root_block_device {
     encrypted = true
-  }
-  tags = {
-    Name    = "${var.user}-jump-${random_string.uuid.result}"
-    Purpose = "teleport windows demo non-AD"
-    Env     = "dev"
   }
 }
 ##################################################################################

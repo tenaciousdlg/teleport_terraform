@@ -24,7 +24,7 @@ identity_path         = "/path/to/identity/file"
 aws_region            = "us-east-1"
 ssh_key               = "key-1"
 win_user              = "bob"
-user                  = "alice"
+user                  = "dlg"
 ```
 
 > Descriptions of each variable can be found in the `variables.tf` file
@@ -57,6 +57,35 @@ resource "teleport_role" "windows_bob" {
       create_desktop_user = true
     }
     allow = {
+      windows_desktop_labels = {
+        "environment" = ["dev", "stage"],
+        "cloud"       = ["aws"]
+      }
+      windows_desktop_logins = ["bob"]
+    }
+  }
+}
+```
+
+* Same as above but including SSH access to the Linux server running the Teleport Desktop serivce
+
+```
+resource "teleport_role" "windows_bob" {
+  version = "v6"
+  metadata = {
+    name        = "windows_bob"
+    description = "Example role for Windows login for user Bob"
+  }
+  spec = {
+    options = {
+      record_session = {
+        desktop = true
+      }
+      desktop_clipboard   = false
+      create_desktop_user = true
+    }
+    allow = {
+      
       windows_desktop_labels = {
         "environment" = ["dev", "stage"],
         "cloud"       = ["aws"]

@@ -15,7 +15,12 @@ variable "cidr_vpc" {
 
 variable "cidr_subnet" {
   description = "CIDR block for subnet"
-  default     = "10.1.0.0/20"
+  default     = "10.1.0.0/24"
+}
+
+variable "cidr_subnet2" {
+  description = "CIDR block for subnet 2"
+  default     = "10.1.1.0/24"
 }
 
 variable "ssh_key" {
@@ -38,7 +43,7 @@ variable "user" {
   description = "username assgined in description for AWS resources"
 }
 
-#test
 variable "identity_path" {
-  type = string
+  type        = string
+  description = "location of teleport identity file on host"
 }
