@@ -10,4 +10,4 @@ kind: TeleportUser
 metadata:
   name: bob
 spec:
-  roles: ['engineer']
+  roles: ['dev-access', 'requester']
