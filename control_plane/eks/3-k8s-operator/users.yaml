@@ -3,7 +3,7 @@ kind: TeleportUser
 metadata:
   name: alice
 spec:
-  roles: ['manager', 'engineer']
+  roles: ['prod-access', 'reviewer']
 ---
 apiVersion: resources.teleport.dev/v2
 kind: TeleportUser
