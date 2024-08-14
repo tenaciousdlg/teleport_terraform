@@ -1,9 +1,10 @@
 # Deploying Teleport Cluster on EKS with Terraform
 
 ## Overview
+
 This is a Terraform based example of deploying a Teleport Cluster onto EKS. 
 
-![exporter (1)](https://github.com/user-attachments/assets/615f2974-6bf5-4ca2-8992-0e77af55ff08)
+![exporter](https://github.com/user-attachments/assets/e92b6696-ce56-460d-99cf-88fec791afda)
 
 This repo requires access to an AWS account to run. It uses the AWS, kubernetes, and helm Terraform providers to deploy a Teleport Cluster on EKS. 
 
