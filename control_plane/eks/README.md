@@ -3,6 +3,8 @@
 ## Overview
 This is a Terraform based example of deploying a Teleport Cluster onto EKS. 
 
+<img width="1098" alt="eks" src="https://github.com/user-attachments/assets/c833d080-6346-401a-a78f-a92c7e3aa912">
+
 This repo requires access to an AWS account to run. It uses the AWS, kubernetes, and helm Terraform providers to deploy a Teleport Cluster on EKS. 
 
 This is done in two `terraform apply` commands in the `1-eks-cluster` and `2-kubernetes-config` directories (example below). The `3-k8s-operator` directory provides example yaml files to be used with the Teleport K8s operator. 
