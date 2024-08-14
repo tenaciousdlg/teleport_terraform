@@ -3,7 +3,7 @@
 ## Overview
 This is a Terraform based example of deploying a Teleport Cluster onto EKS. 
 
-<img width="1098" alt="eks" src="https://github.com/user-attachments/assets/c833d080-6346-401a-a78f-a92c7e3aa912">
+![exporter](https://github.com/user-attachments/assets/755a7a3c-f787-46f5-96f1-b853e57e4f52)
 
 This repo requires access to an AWS account to run. It uses the AWS, kubernetes, and helm Terraform providers to deploy a Teleport Cluster on EKS. 
 
@@ -22,6 +22,7 @@ Here is what my directory structure looks like. The `terraform.tfvars` files are
 │   ├── main.tf
 │   ├── terraform.tfvars
 │   └── variables.tf
+
 ├── 3-k8s-operator
 │   ├── accesslist.yaml
 │   ├── login.yaml
