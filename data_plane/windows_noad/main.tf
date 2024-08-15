@@ -21,8 +21,8 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "Purpose" = "teleport windows demo non-AD"
-      "Env"     = "dev"
+      "purpose"              = "teleport windows demo non-AD"
+      "env"                  = "dev"
     }
   }
 }
@@ -50,8 +50,8 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_security_group" "local" {
-  depends_on = [aws_vpc.main]
-  vpc_id     = aws_vpc.main.id
+  depends_on  = [aws_vpc.main]
+  vpc_id      = aws_vpc.main.id
   name        = "allow_local"
   description = "allow private network traffic and internet egress"
   ingress {
@@ -59,6 +59,7 @@ resource "aws_security_group" "local" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = [var.cidr_vpc]
+    self        = true
   }
   egress {
     from_port   = 0
@@ -138,6 +139,7 @@ resource "aws_instance" "windows" {
     User     = "${var.win_user}"
     Password = random_string.windows.result
     Version  = "${var.teleport_version}"
+    Domain   = "${var.proxy_service_address}"
   })
   metadata_options {
     http_endpoint = "enabled"
