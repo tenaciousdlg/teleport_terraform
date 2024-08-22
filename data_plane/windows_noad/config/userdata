@@ -55,6 +55,7 @@ ssh_service:
     enabled: true
 windows_desktop_service:
   enabled: yes
+  show_desktop_wallpaper: true
   non_ad_hosts:
   - ${windows_internal_dns}
   host_labels:
