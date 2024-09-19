@@ -123,12 +123,33 @@ resource "random_string" "windows" {
   length = 40
 }
 
+data "aws_ami" "windows_server" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["Windows_Server-2019-English-Full-Base-*"]
+  }
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+  filter {
+    name   = "owner-alias"
+    values = ["amazon"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["801119661308"] # Amazon's AWS Windows AMI account ID
+}
+
 resource "aws_instance" "windows" {
   depends_on = [
     aws_vpc.main,
     aws_subnet.private
   ]
-  ami                         = "ami-0b2167681856cd65e"
+  ami                         = data.aws_ami.windows_server.id
   instance_type               = "t3.medium"
   key_name                    = var.ssh_key
   associate_public_ip_address = true
@@ -170,10 +191,31 @@ resource "teleport_provision_token" "linux_jump" {
   }
 }
 
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+  filter {
+    name   = "owner-alias"
+    values = ["amazon"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["137112412989"] # Amazon's AWS AMI account ID
+}
+
 resource "aws_instance" "linux_jump" {
   depends_on = [aws_vpc.main, aws_subnet.public]
   # Amazon Linux 2023 64-bit x86
-  ami                    = "ami-01103fb68b3569475"
+  ami                    = data.aws_ami.amazon_linux.id
   instance_type          = "t3.micro"
   key_name               = var.ssh_key
   vpc_security_group_ids = [aws_security_group.local.id]
