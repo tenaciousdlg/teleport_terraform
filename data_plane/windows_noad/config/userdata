@@ -59,7 +59,7 @@ windows_desktop_service:
   non_ad_hosts:
   - ${windows_internal_dns}
   host_labels:
-  - match: '.*\.us-east-2.compute.internal'
+  - match: '.*\.${region}.compute.internal'
     labels:
       env: dev
       cloud: aws

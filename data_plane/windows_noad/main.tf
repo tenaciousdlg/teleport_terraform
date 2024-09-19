@@ -224,6 +224,7 @@ resource "aws_instance" "linux_jump" {
     token                = teleport_provision_token.linux_jump.metadata.name
     windows_internal_dns = aws_instance.windows.private_dns
     domain               = var.proxy_service_address
+    region = var.aws_region
   })
   // The following two blocks adhere to security best practices.
   metadata_options {
