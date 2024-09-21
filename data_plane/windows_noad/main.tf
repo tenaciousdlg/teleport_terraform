@@ -8,7 +8,7 @@ terraform {
       version = "~> 5.39"
     }
     teleport = {
-      version = "~> 15.0"
+      version = "~> 16.0"
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
     }
   }
@@ -22,14 +22,14 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "purpose"              = "teleport windows demo non-AD"
-      "env"                  = "dev"
+      "${var.aws_key_label}" = "${var.aws_value_label}"
+      "teleport-cluster"     = "${var.proxy_service_address}"
     }
   }
 }
 
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
-  identity_file_path = var.identity_path
 }
 
 provider "random" {
@@ -127,7 +127,7 @@ data "aws_ami" "windows_server" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["Windows_Server-2019-English-Full-Base-*"]
+    values = ["${var.ami_windows_search}"]
   }
   filter {
     name   = "architecture"
@@ -150,7 +150,7 @@ resource "aws_instance" "windows" {
     aws_subnet.private
   ]
   ami                         = data.aws_ami.windows_server.id
-  instance_type               = "t3.medium"
+  instance_type               = "${var.windows_machine_size}"
   key_name                    = var.ssh_key
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.private.id
@@ -159,8 +159,8 @@ resource "aws_instance" "windows" {
   user_data = templatefile("${path.module}/config/windows.tftpl", {
     User     = "${var.win_user}"
     Password = random_string.windows.result
-    Version  = "${var.teleport_version}"
     Domain   = "${var.proxy_service_address}"
+    teleport_version_channel = "${var.teleport_version_channel}"
   })
   metadata_options {
     http_endpoint = "enabled"
@@ -195,7 +195,7 @@ data "aws_ami" "amazon_linux" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["${var.ami_amazonlinx_search}"]
   }
   filter {
     name   = "architecture"
@@ -216,7 +216,7 @@ resource "aws_instance" "linux_jump" {
   depends_on = [aws_vpc.main, aws_subnet.public]
   # Amazon Linux 2023 64-bit x86
   ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t3.micro"
+  instance_type          = "${var.agent_machine_size}"
   key_name               = var.ssh_key
   vpc_security_group_ids = [aws_security_group.local.id]
   subnet_id              = aws_subnet.public.id
@@ -224,7 +224,15 @@ resource "aws_instance" "linux_jump" {
     token                = teleport_provision_token.linux_jump.metadata.name
     windows_internal_dns = aws_instance.windows.private_dns
     domain               = var.proxy_service_address
-    region = var.aws_region
+    teleport_install_type = var.teleport_install_type
+    teleport_install_upgrader = var.teleport_install_upgrader
+    teleport_version_channel = var.teleport_version_channel
+    teleport_ssh_label = var.teleport_ssh_label
+    teleport_windows_label = var.teleport_windows_label
+    ssh_enhanced_recording_bool = var.ssh_enhanced_recording_bool
+    agent_machine_name = var.agent_machine_name
+    teleport_join_method = var.teleport_join_method
+    teleport_token_name = var.teleport_token_name
   })
   // The following two blocks adhere to security best practices.
   metadata_options {

@@ -3,17 +3,22 @@
 # amzlinux jump host for Windows Desktop
 # Installs system tools for troubleshooting
 #########################################################
-sudo hostnamectl set-hostname windows-jump
+sudo hostnamectl set-hostname ${agent_machine_name}
 sudo dnf install -y net-tools vim wget
 #########################################################
 # teleport installation 
 #########################################################
 # Installs teleport enterprise edition 
-source /etc/os-release
-VERSION_ID=$(echo $${VERSION_ID} | grep -Eo "^[0-9]+")
-NAME='_arch'
-sudo dnf config-manager --add-repo "$(rpm --eval "https://yum.releases.teleport.dev/$${ID}/$${VERSION_ID}/Teleport/%%{$${NAME}}/stable/v15/teleport.repo")"
-sudo dnf install teleport-ent -y
+TELEPORT_EDITION="${teleport_install_type}"
+TELEPORT_VERSION="$(curl https://${domain}${teleport_version_channel} | sed 's/v//')"
+curl https://cdn.teleport.dev/install-v$TELEPORT_VERSION.sh > /tmp/installteleport.sh
+bash /tmp/installteleport.sh $TELEPORT_VERSION $TELEPORT_EDITION
+if [[ "${teleport_install_upgrader}" == "true" && "${teleport_install_type}" == "enterprise" ]];     then
+  yum install  teleport-ent-updater -y
+fi
+# Teleport does not allow periods in windows names
+WINDOWS_HOST_NAME=$(echo "${windows_internal_dns}" | awk -F. '{print $1}')
+
 #########################################################
 # teleport configuration
 #########################################################
@@ -22,7 +27,9 @@ sudo cat << EOF > /etc/teleport.yaml
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
-  auth_token: /var/lib/teleport/token
+  join_params:
+    method: "${teleport_join_method}"
+    token_name: "${teleport_token_name}"
   proxy_server: ${domain}:443
   log:
     output: stderr
@@ -48,25 +55,28 @@ ssh_service:
     command: [hostname]
     period: 1m0s
   labels:
-    env: dev
+    ${teleport_ssh_label}
     cloud: aws
     os: amz-lin
   enhanced_recording:
-    enabled: true
+    enabled: ${ssh_enhanced_recording_bool}
 windows_desktop_service:
   enabled: yes
   show_desktop_wallpaper: true
-  non_ad_hosts:
-  - ${windows_internal_dns}
-  host_labels:
-  - match: '.*\.${region}.compute.internal'
+  static_hosts:
+  - name: $WINDOWS_HOST_NAME
+    ad: false
+    addr: ${windows_internal_dns}
     labels:
-      env: dev
+      ${teleport_windows_label}
       cloud: aws
       os: windows
 EOF
 
-echo ${token} > /var/lib/teleport/token
+# write to file the token file if it's a token type
+if [[ "${teleport_join_method}" == "token" ]];     then
+  echo ${token} > ${teleport_token_name}
+fi
 # Sets teleport service to start at boot and brings it up
 systemctl enable teleport;
 systemctl restart teleport;
