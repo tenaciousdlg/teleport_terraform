@@ -1,6 +1,13 @@
 # defines aws provider
 provider "aws" {
   region = var.region
+  default_tags {
+    tags = {
+      "teleport.dev/creator" = "dlg@goteleport.com"
+      "env" = "dev"
+      "ManagedBy" = "terrafrom"
+    }
+  }
 }
 
 # sources information about an eks cluster based on its name
@@ -11,15 +18,6 @@ data "aws_eks_cluster" "cluster" {
 # sources auth token for eks cluster
 data "aws_eks_cluster_auth" "cluster" {
   name = var.cluster_name
-}
-
-# local variables
-locals {
-  tags = {
-    ManagedBy = "terraform"
-    owner     = var.user
-    env       = "dev"
-  }
 }
 
 # defines k8s provider and auth
@@ -129,4 +127,48 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
   type    = "CNAME"
   ttl     = "300"
   records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
+}
+
+# managing cert-manager here since it is not an official https://docs.aws.amazon.com/eks/latest/userguide/workloads-add-ons-available-eks.html add on
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  namespace  = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  version    = "v1.9.1"  # Use the latest stable version of cert-manager
+
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+}
+
+resource "kubernetes_manifest" "letsencrypt_staging_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "letsencrypt-staging"
+    }
+    spec = {
+      acme = {
+        server = "https://acme-staging-v02.api.letsencrypt.org/directory"
+        email  = var.user
+        privateKeySecretRef = {
+          name = "letsencrypt-staging"
+        }
+        solvers = [
+          {
+            http01 = {
+              ingress = {
+                class = "nginx"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
 }

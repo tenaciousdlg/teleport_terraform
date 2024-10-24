@@ -53,6 +53,8 @@ spec:
     db_users:
     - '{{internal.db_users}}'
     - '*'
+    - bob
+    - alice
     desktop_groups:
     - Administrators
     impersonate:
@@ -86,6 +88,7 @@ spec:
     - '{{email.local(external.email)}}'
     - ubuntu
     - debian
+    - ec2-user
     node_labels:
       env: dev
     rules:
@@ -104,7 +107,9 @@ spec:
     windows_desktop_logins:
     - '{{internal.windows_logins}}'
     - '{{email.local(external.username)}}'
-    - admin
+    - Administrator
+  options:
+    create_desktop_user: true
 ---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7
@@ -159,6 +164,7 @@ spec:
     - '{{email.local(external.email)}}'
     - ubuntu
     - debian
+    - ec2-user
     node_labels:
       env: prod
     rules:
@@ -177,7 +183,7 @@ spec:
     windows_desktop_logins:
     - '{{internal.windows_logins}}'
     - '{{email.local(external.username)}}'
-    - admin
+    - Administrator
 ---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7
@@ -188,11 +194,9 @@ spec:
     review_requests:
       preview_as_roles:
       - access
-      - group-access
       - prod-access
       roles:
       - access
-      - group-access
       - prod-access
 ---
 apiVersion: resources.teleport.dev/v1
@@ -206,5 +210,4 @@ spec:
       - prod-access
       search_as_roles:
       - access
-      - group-access
       - prod-access

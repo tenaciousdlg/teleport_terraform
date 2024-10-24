@@ -3,7 +3,7 @@
 # package installs
 #########################################################
 sudo apt update && sudo apt upgrade -y 
-sudo apt install -y mariadb-server mariadb-client net-tools
+sudo apt install -y mariadb-server mariadb-client jq
 sudo systemctl enable mariadb
 sudo systemctl start mariadb
 sudo mysql_secure_installation << EOF
@@ -19,13 +19,7 @@ EOF
 ## teleport installation ##needs work
 #########################################################
 ## ENT Edition
-sudo curl https://apt.releases.teleport.dev/gpg -o /usr/share/keyrings/teleport-archive-keyring.asc
-source /etc/os-release
-echo "deb [signed-by=/usr/share/keyrings/teleport-archive-keyring.asc] \
-https://apt.releases.teleport.dev/$${ID?} $${VERSION_CODENAME?} stable/v14" \
-| sudo tee /etc/apt/sources.list.d/teleport.list > /dev/null
-sudo apt-get update
-sudo apt-get install teleport-ent
+curl -s https://goteleport.com/static/install.sh | bash -s $(curl -s https://${domain}/v1/webapi/ping | jq -r '.server_version') enterprise
 echo ${token} > /var/lib/teleport/token
 #########################################################
 ## teleport configuration
@@ -34,7 +28,7 @@ sudo cat <<-EOF > /etc/teleport.yaml
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
-  proxy_server: "teleport.chrisdlg.com:443"
+  proxy_server: "${domain}:443"
   auth_token: "/var/lib/teleport/token"
   log:
     output: stderr
@@ -48,23 +42,13 @@ db_service:
     protocol: "mysql"
     uri: "localhost:3306"
     static_labels:
-      "environment": "stage"
+      "env": "dev"
       "os": "ubuntu"
       "cloud": "aws"
 auth_service:
   enabled: "no"
 ssh_service:
-  enabled: "yes"
-  commands:
-  - name: hostname
-    command: [hostname]
-    period: 1m0s
-  labels:
-    environment: stage
-    os: ubuntu
-    cloud: aws
-  enhanced_recording:
-    enabled: true
+  enabled: "no"
 proxy_service:
   enabled: "no"
 app_service:

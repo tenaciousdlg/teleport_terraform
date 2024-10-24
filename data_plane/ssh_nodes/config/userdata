@@ -1,5 +1,6 @@
 #!/bin/bash
 #########################################################
+sudo hostnamectl set-hostname ${host}
 # Installs teleport enterprise edition based on https://goteleport.com/docs/server-access/getting-started/#step-14-install-teleport-on-your-linux-host
 curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
 #########################################################
@@ -21,11 +22,22 @@ ssh_service:
   labels:
     env: dev
     os: amz-lin
+  commands: #https://goteleport.com/docs/management/admin/labels/
+    - name: "hostname"
+      command: ["/bin/hostname"]
+      period: "1m0s"
+    - name: "load_average"
+      command: ["/bin/sh", "-c", "cut -d' ' -f1 /proc/loadavg"]
+      period: "30s"
+    - name: "disk_used"
+      command: ["/bin/sh", "-c", "df -hTP / | awk '{print \$6}' | egrep '^[0-9][0-9]'"]
+      period: "2m0s"
 proxy_service:
   enabled: false
 auth_service:
   enabled: false
 EOF
 
-systemctl enable teleport;
-systemctl restart teleport;
+systemctl enable teleport
+systemctl start teleport
+systemctl status teleport

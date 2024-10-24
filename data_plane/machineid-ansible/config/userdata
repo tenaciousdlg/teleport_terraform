@@ -10,13 +10,7 @@ sudo apt install -y net-tools cowsay jq
 # teleport installation
 #########################################################
 # installs teleport enterprise edition for ubuntu
-sudo curl https://apt.releases.teleport.dev/gpg -o /usr/share/keyrings/teleport-archive-keyring.asc
-source /etc/os-release
-echo "deb [signed-by=/usr/share/keyrings/teleport-archive-keyring.asc] \
-https://apt.releases.teleport.dev/$${ID?} $${VERSION_CODENAME?} stable/v${major}" \
-| sudo tee /etc/apt/sources.list.d/teleport.list > /dev/null
-sudo apt-get update
-sudo apt-get install teleport-ent
+curl https://goteleport.com/static/install.sh | bash -s "${major}" "enterprise"
 echo ${token} > /var/lib/teleport/token
 #########################################################
 ## teleport configuration (for SSH access to node)
@@ -43,11 +37,9 @@ ssh_service:
     command: [hostname]
     period: 1m0s
   labels:
-    tier: stage
-    env: stage
+    env: dev
     os: ubuntu
     cloud: aws
-    ansible: main
   enhanced_recording:
     enabled: true
 proxy_service:

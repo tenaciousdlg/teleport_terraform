@@ -8,19 +8,9 @@ variable "aws_region" {
   description = "Region in which to deploy AWS resources"
 }
 
-variable "cidr_vpc" {
-  description = "CIDR block for VPC"
-  default     = "10.1.0.0/16"
-}
-
-variable "cidr_subnet" {
-  description = "CIDR block for subnet"
-  default     = "10.1.0.0/20"
-}
-
-variable "ssh_key" {
-  description = "AWS SSH key for instance"
-  default     = ""
+variable "identity_path" {
+  type        = string
+  description = "file path location of identity file for teleport terraform provider"
 }
 
 variable "teleport_version" {
@@ -33,7 +23,12 @@ variable "user" {
   description = "username assgined in description for AWS resources"
 }
 
-#test
-variable "identity_path" {
-  type = string
+variable "cidr_vpc" {
+  description = "CIDR block for VPC"
+  default     = "10.1.0.0/16"
+}
+
+variable "cidr_subnet" {
+  description = "CIDR block for subnet"
+  default     = "10.1.0.0/20"
 }

@@ -16,7 +16,7 @@ spec:
       - manager
   grants:
     roles:
-      - support-engineer
+      - dev-access
   membership_requires:
     roles:
       - engineer

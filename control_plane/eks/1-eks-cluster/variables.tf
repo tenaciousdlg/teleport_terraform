@@ -9,3 +9,10 @@ variable "name" {
   type        = string
   default     = "terraform"
 }
+
+# used for tracking resources
+variable "user" {
+  description = "Name of the user managing the deployment"
+  type        = string
+  default     = "user@example.com"
+}
