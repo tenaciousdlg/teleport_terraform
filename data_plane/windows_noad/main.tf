@@ -29,7 +29,7 @@ provider "aws" {
 }
 
 provider "teleport" {
-  addr               = "${var.proxy_service_address}:443"
+  addr = "${var.proxy_service_address}:443"
 }
 
 provider "random" {
@@ -150,16 +150,16 @@ resource "aws_instance" "windows" {
     aws_subnet.private
   ]
   ami                         = data.aws_ami.windows_server.id
-  instance_type               = "t3.medium"
+  instance_type               = "${var.windows_machine_size}"
   key_name                    = var.ssh_key
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.private.id
   vpc_security_group_ids      = [aws_security_group.local.id]
   get_password_data           = false
   user_data = templatefile("${path.module}/config/windows.tftpl", {
-    User     = "${var.win_user}"
-    Password = random_string.windows.result
-    Domain   = "${var.proxy_service_address}"
+    User                     = "${var.win_user}"
+    Password                 = random_string.windows.result
+    Domain                   = "${var.proxy_service_address}"
     teleport_version_channel = "${var.teleport_version_channel}"
   })
   metadata_options {
@@ -216,15 +216,23 @@ resource "aws_instance" "linux_jump" {
   depends_on = [aws_vpc.main, aws_subnet.public]
   # Amazon Linux 2023 64-bit x86
   ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t3.micro"
+  instance_type          = "${var.agent_machine_size}"
   key_name               = var.ssh_key
   vpc_security_group_ids = [aws_security_group.local.id]
   subnet_id              = aws_subnet.public.id
   user_data = templatefile("./config/userdata", {
-    token                = teleport_provision_token.linux_jump.metadata.name
+    token = teleport_provision_token.linux_jump.metadata.name
     windows_internal_dns = aws_instance.windows.private_dns
-    domain               = var.proxy_service_address
-    region = var.aws_region
+    domain = var.proxy_service_address
+    teleport_install_type = var.teleport_install_type
+    teleport_install_upgrader = var.teleport_install_upgrader
+    teleport_version_channel = var.teleport_version_channel
+    teleport_ssh_label = var.teleport_ssh_label
+    teleport_windows_label = var.teleport_windows_label
+    ssh_enhanced_recording_bool = var.ssh_enhanced_recording_bool
+    agent_machine_name = var.agent_machine_name
+    teleport_join_method = var.teleport_join_method
+    teleport_token_name = var.teleport_token_name
   })
   // The following two blocks adhere to security best practices.
   metadata_options {

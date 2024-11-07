@@ -4,13 +4,13 @@ variable "proxy_service_address" {
 }
 
 variable "teleport_join_method" {
-  type        = string
-  default     = "token"
+  type    = string
+  default = "token"
 }
 
 variable "teleport_token_name" {
-  type        = string
-  default     = "/var/lib/teleport/token"
+  type    = string
+  default = "/var/lib/teleport/token"
 }
 
 variable "ssh_key" {
@@ -19,49 +19,49 @@ variable "ssh_key" {
 }
 
 variable "teleport_install_type" {
-  type       = string
-  default    = "cloud"
+  type    = string
+  default = "cloud"
 }
 
 variable "teleport_install_upgrader" {
-  type      = string
-  default   = "true"
+  type    = string
+  default = "true"
 }
 
 
 variable "windows_machine_size" {
-  type      = string
-  default   = "t2.medium"
+  type    = string
+  default = "t2.medium"
 }
 
 variable "teleport_windows_label" {
-  type      = string
-  default   = "env: dev"
+  type    = string
+  default = "env: dev"
 }
 
 variable "teleport_ssh_label" {
-  type      = string
-  default   = "env: dev"
+  type    = string
+  default = "env: dev"
 }
 
 variable "agent_machine_name" {
-  type     = string
-  default  = "windows-jump"
+  type    = string
+  default = "windows-jump"
 }
 
 variable "ssh_enhanced_recording_bool" {
-  type      = string
-  default   = "false"
+  type    = string
+  default = "false"
 }
 
 variable "ami_windows_search" {
-  type     = string
-  default  = "Windows_Server-2019-English-Full-Base-*"
+  type    = string
+  default = "Windows_Server-2019-English-Full-Base-*"
 }
 
 variable "teleport_version_channel" {
-  type     = string
-  default  = "/v1/webapi/automaticupgrades/channel/default/version"
+  type    = string
+  default = "/v1/webapi/automaticupgrades/channel/default/version"
 }
 
 variable "ami_amazonlinx_search" {
@@ -70,19 +70,19 @@ variable "ami_amazonlinx_search" {
 }
 
 variable "aws_key_label" {
-  type      = string
-  default   = "env"
+  type    = string
+  default = "env"
 }
 
 variable "aws_value_label" {
-  type      = string
-  default   = "dev"
+  type    = string
+  default = "dev"
 }
 
 
 variable "agent_machine_size" {
-  type      = string
-  default   = "t2.micro"
+  type    = string
+  default = "t2.micro"
 }
 
 variable "aws_region" {
