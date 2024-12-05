@@ -53,7 +53,7 @@ This means they should be removed in reverse order. Using the above example we'l
 
 ## Configured 
 
-- [Teleport Cluster deployed via Helm](https://goteleport.com/docs/ver/15.x/deploy-a-cluster/helm-deployments/kubernetes-cluster/)
+- [Teleport Cluster deployed via Helm](https://goteleport.com/docs/admin-guides/deploy-a-cluster/helm-deployments/kubernetes-cluster/)
 - [Teleport Kubernetes Operator](https://goteleport.com/docs/management/dynamic-resources/teleport-operator/)
 
 ## TO DO 
