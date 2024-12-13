@@ -9,7 +9,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "15.2.0"
+      version = "~> 16.0"
     }
   }
 }
@@ -29,7 +29,6 @@ provider "aws" {
 
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
-  identity_file_path = var.identity_path
 }
 
 #debug
@@ -139,7 +138,7 @@ resource "aws_instance" "teleport_agent" {
     token                 = teleport_provision_token.agent[count.index].metadata.name
     proxy_service_address = var.proxy_service_address
     teleport_version      = var.teleport_version
-    host                  = "${var.user}-ssh-${count.index}"
+    host                  = "seref-ssh-${count.index}"
   })
 
   // The following two blocks adhere to security best practices.
