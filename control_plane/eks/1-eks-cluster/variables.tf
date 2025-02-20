@@ -16,3 +16,10 @@ variable "user" {
   type        = string
   default     = "user@example.com"
 }
+
+# k8s cluster version
+variable "ver_cluster" {
+  description = "Version number of kubernetes to run"
+  type        = string
+  default     = "1.31"
+}

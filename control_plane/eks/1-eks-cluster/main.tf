@@ -1,6 +1,23 @@
 # defines aws provider
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.39"
+    }
+  }
+}
+
 provider "aws" {
   region = var.region
+  default_tags {
+    tags = {
+      "teleport.dev/creator" = var.user
+      "tier"                 = "demo"
+      "ManagedBy"            = "terrafrom"
+      name                   = var.name
+    }
+  }
 }
 
 # checks for space in availability zones
@@ -13,13 +30,8 @@ data "aws_availability_zones" "available" {
 
 # local variables used across resources
 locals {
-  vpc_cidr             = "10.0.0.0/16"
-  azs                  = slice(data.aws_availability_zones.available.names, 0, 3)
-  tags = {
-    ManagedBy = "terraform"
-    owner     = var.name
-    env       = "dev"
-  }
+  vpc_cidr = "10.0.0.0/16"
+  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 }
 
 # aws vpc module; deloys vpc componets (subnets, availability zones, etc...)
@@ -44,8 +56,6 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
   }
-
-  tags = local.tags
 }
 
 # eks module 
@@ -55,7 +65,7 @@ module "eks" {
   version    = "~> 20.0"
 
   cluster_name    = "${var.name}-cluster"
-  cluster_version = "1.29"
+  cluster_version = var.ver_cluster
 
   cluster_endpoint_public_access = true
 
@@ -66,11 +76,14 @@ module "eks" {
 
   eks_managed_node_group_defaults = {
     ami_type = "AL2_x86_64"
+    tags = {
+      "teleport.dev/creator" = var.user
+    }
   }
 
   eks_managed_node_groups = {
     one = {
-      name = "node-group-1"
+      name = "${var.name}-node-group-1"
 
       instance_types = ["t3.small"]
 
@@ -80,23 +93,21 @@ module "eks" {
     }
 
     two = {
-      name = "node-group-2"
+      name = "${var.name}-node-group-2"
 
       instance_types = ["t3.micro"]
 
       min_size     = 1
-      max_size     = 2
-      desired_size = 1
+      max_size     = 4
+      desired_size = 2
     }
   }
-
-  tags = local.tags
 }
 
 # module for configuration of eks cluster components  
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
-  version = "~> 1.0"
+  version = "~> 1.1"
 
   cluster_name      = module.eks.cluster_name
   cluster_endpoint  = module.eks.cluster_endpoint
@@ -112,8 +123,8 @@ module "eks_blueprints_addons" {
       most_recent = true
 
       timeouts = {
-        create = "20m"
-        delete = "10m"
+        create = "5m"
+        delete = "5m"
       }
     }
     vpc-cni = {
@@ -122,13 +133,11 @@ module "eks_blueprints_addons" {
     kube-proxy = {
 
     }
-
   }
-
-  tags = local.tags
 }
 
 # iam module for ebs csi driver. Needed to give eks cluster perms to create ebs 
+# https://github.com/aws-ia/terraform-aws-eks-blueprints-addons/discussions/406
 module "ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.20"
@@ -143,6 +152,4 @@ module "ebs_csi_driver_irsa" {
       namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
     }
   }
-
-  tags = local.tags
 }
