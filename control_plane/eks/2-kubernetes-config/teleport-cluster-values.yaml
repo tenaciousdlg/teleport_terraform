@@ -1,9 +1,0 @@
-clusterName: seref.teleportdemo.com
-proxyListenerMode: multiplex
-acme: true
-acmeEmail: dlg@goteleport.com
-enterprise: true
-labels:
-  env: dev
-operator:
-  enabled: true
