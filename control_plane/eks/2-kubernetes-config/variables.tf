@@ -1,13 +1,6 @@
-variable "eks_cluster" {
+variable "cluster_name" {
+  description = "name of your teleport cluster (e.g. teleport.example.com)"
   type        = string
-  default     = "test-cluster"
-  description = "name of the eks cluster created in the first step"
-}
-
-variable "region" {
-  description = "aws region"
-  type        = string
-  default     = "us-east-2"
 }
 
 variable "domain_name" {
@@ -16,35 +9,24 @@ variable "domain_name" {
   type        = string
 }
 
+variable "eks_cluster" {
+  description = "name of the eks cluster created in the first step"
+  default     = "test-cluster"
+  type        = string
+}
+
 variable "email" {
   description = "email for teleport admin. used with ACME cert"
   type        = string
 }
 
+variable "region" {
+  description = "aws region"
+  type        = string
+  default     = "us-east-2"
+}
+
 variable "teleport_ver" {
-  description = "full version of teleport (e.g. 15.1.0)"
+  description = "full version of teleport (e.g. 17.0.0)"
   type        = string
-}
-
-variable "cluster_name" {
-  description = "name of your teleport cluster (e.g. teleport.example.com)"
-  type        = string
-}
-
-variable "db_name" {
-  description = "postgresdb name to use with teleport"
-  type = string
-  default = "teleport"
-}
-
-variable "db_username" {
-  description = "db user for use with teleport"
-  type = string
-  default = "teleport_db"
-}
-
-variable "db_password" {
-  description = "db password used for example purposes only"
-  type = string
-  default = "ChooSeABett3rAU1hMeth0D"
 }

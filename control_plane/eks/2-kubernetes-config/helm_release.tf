@@ -11,7 +11,6 @@ provider "helm" {
 }
 
 # defines helm release for teleport cluster
-# teleport k8s operator is added via the operator.enabled arugmenet in the values section below
 resource "helm_release" "teleport_cluster" {
   name       = "teleport-cluster"
   namespace  = kubernetes_namespace.teleport_cluster.metadata[0].name
@@ -23,27 +22,22 @@ resource "helm_release" "teleport_cluster" {
 
   values = [
     jsonencode({
-      clusterName        = var.cluster_name
-      proxyListenerMode  = "multiplex"
-      acme               = true
-      acmeEmail          = var.email
-      enterprise         = true
+      clusterName       = var.cluster_name
+      proxyListenerMode = "multiplex"
+      acme              = true
+      acmeEmail         = var.email
+      enterprise        = true
       labels = {
         tier = "dev"
       }
+      # used for turning on teleport k8s operator
       operator = {
         enabled = true
       }
+      # testing for PVC
       persistence = {
-        enabled         = false
+        enabled = false
       }
-#      storage = {
-#        type = "postgres"
-#        postgres = {
-#          connection_string = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/teleport_backend?sslmode=disable"
-#          audit_events_uri = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/teleport_audit?sslmode=disable#disable_cleanup=false&retention_period=2160h"
-#        }
-#      }
     })
   ]
 }
