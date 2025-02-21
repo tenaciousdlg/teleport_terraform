@@ -10,11 +10,13 @@ terraform {
 
 provider "aws" {
   region = var.region
+  # these are tags that are added to aws resources this config creates
+  # these are optional
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
       "tier"                 = "demo"
-      "ManagedBy"            = "terrafrom"
+      "ManagedBy"            = "terraform"
       name                   = var.name
     }
   }
@@ -29,22 +31,22 @@ data "aws_availability_zones" "available" {
 }
 
 # local variables used across resources
+# setting a static private network config for ease of use
 locals {
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 }
 
-# aws vpc module; deloys vpc componets (subnets, availability zones, etc...)
+# aws vpc module
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
-  name = "${var.name}-eks-vpc"
   cidr = local.vpc_cidr
 
   azs             = local.azs
-  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
+  private_subnets = [for index, az in local.azs : cidrsubnet(local.vpc_cidr, 4, index)]
+  public_subnets  = [for index, az in local.azs : cidrsubnet(local.vpc_cidr, 8, index + 48)]
 
   enable_nat_gateway = true
   single_nat_gateway = true
@@ -58,11 +60,10 @@ module "vpc" {
   }
 }
 
-# eks module 
+# aws eks module
 module "eks" {
-  depends_on = [module.vpc]
-  source     = "terraform-aws-modules/eks/aws"
-  version    = "~> 20.0"
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
 
   cluster_name    = "${var.name}-cluster"
   cluster_version = var.ver_cluster
@@ -123,8 +124,8 @@ module "eks_blueprints_addons" {
       most_recent = true
 
       timeouts = {
-        create = "5m"
-        delete = "5m"
+        create = "10m"
+        delete = "10m"
       }
     }
     vpc-cni = {
