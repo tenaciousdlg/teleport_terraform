@@ -61,3 +61,19 @@ data "kubernetes_service" "teleport_cluster" {
     namespace = helm_release.teleport_cluster.namespace
   }
 }
+
+# used with pvc for persistence with k8s teleport backend
+# if postgres or alternative is used this can be removed
+resource "kubernetes_annotations" "gp2" {
+  api_version = "storage.k8s.io/v1"
+  kind = "StorageClass"
+  force = true
+
+  metadata {
+    name = "gp2"
+  }
+
+  annotations = {
+    "storageclass.kubernetes.io/is-default-class" = "true"
+  }
+}

@@ -36,7 +36,7 @@ resource "helm_release" "teleport_cluster" {
       }
       # testing for PVC
       persistence = {
-        enabled = false
+        enabled = true
       }
     })
   ]
