@@ -68,22 +68,3 @@ data "kubernetes_service" "teleport_cluster" {
     namespace = helm_release.teleport_cluster.namespace
   }
 }
-
-resource "kubernetes_persistent_volume_claim" "teleport_cluster" {
-  metadata {
-    name      = "teleport-cluster"
-    namespace = "teleport-cluster"
-  }
-
-  spec {
-    access_modes = ["ReadWriteOnce"]
-
-    resources {
-      requests = {
-        storage = "10Gi"
-      }
-    }
-
-    storage_class_name = "standard"
-  }
-}

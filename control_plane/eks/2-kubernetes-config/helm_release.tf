@@ -34,6 +34,16 @@ resource "helm_release" "teleport_cluster" {
       operator = {
         enabled = true
       }
+      persistence = {
+        enabled         = false
+      }
+#      storage = {
+#        type = "postgres"
+#        postgres = {
+#          connection_string = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/teleport_backend?sslmode=disable"
+#          audit_events_uri = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.address}:5432/teleport_audit?sslmode=disable#disable_cleanup=false&retention_period=2160h"
+#        }
+#      }
     })
   ]
 }

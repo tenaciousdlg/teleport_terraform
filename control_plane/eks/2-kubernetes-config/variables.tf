@@ -1,13 +1,7 @@
-variable "cluster_name" {
+variable "eks_cluster" {
   type        = string
   default     = "test-cluster"
-  description = "name of the cluster created in the first step (under the eks-cluster dir)"
-}
-
-variable "user" {
-  description = "name of the user deploying the infrastructure"
-  type        = string
-  default     = "terraform"
+  description = "name of the eks cluster created in the first step"
 }
 
 variable "region" {
@@ -32,7 +26,25 @@ variable "teleport_ver" {
   type        = string
 }
 
-variable "tele_name" {
-  description = "value"
+variable "cluster_name" {
+  description = "name of your teleport cluster (e.g. teleport.example.com)"
   type        = string
+}
+
+variable "db_name" {
+  description = "postgresdb name to use with teleport"
+  type = string
+  default = "teleport"
+}
+
+variable "db_username" {
+  description = "db user for use with teleport"
+  type = string
+  default = "teleport_db"
+}
+
+variable "db_password" {
+  description = "db password used for example purposes only"
+  type = string
+  default = "ChooSeABett3rAU1hMeth0D"
 }
