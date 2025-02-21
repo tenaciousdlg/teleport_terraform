@@ -137,7 +137,7 @@ module "eks_blueprints_addons" {
   }
 }
 
-# iam module for ebs csi driver. Needed to give eks cluster perms to create ebs 
+# iam module for ebs csi driver. Needed to give eks cluster perms to create ebs for pvc used with teleport
 # https://github.com/aws-ia/terraform-aws-eks-blueprints-addons/discussions/406
 module "ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
