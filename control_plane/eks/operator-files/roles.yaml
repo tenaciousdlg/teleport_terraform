@@ -1,38 +1,38 @@
----
-apiVersion: resources.teleport.dev/v1
-kind: TeleportRoleV7
-metadata:
-  name: terraform
-spec:
-  allow:
-    app_labels:
-      '*': '*'
-    db_labels:
-      '*': '*'
-    rules:
-    - resources:
-      - app
-      - cluster_auth_preference
-      - cluster_networking_config
-      - db
-      - device
-      - github
-      - login_rule
-      - oidc
-      - okta_import_rule
-      - role
-      - saml
-      - session_recording_config
-      - token
-      - trusted_cluster
-      - user
-      verbs:
-      - list
-      - create
-      - read
-      - update
-      - delete
----
+#---
+#apiVersion: resources.teleport.dev/v1
+#kind: TeleportRoleV7
+#metadata:
+#  name: terraform
+#spec:
+#  allow:
+#    app_labels:
+#      '*': '*'
+#    db_labels:
+#      '*': '*'
+#    rules:
+#    - resources:
+#      - app
+#      - cluster_auth_preference
+#      - cluster_networking_config
+#      - db
+#      - device
+#      - github
+#      - login_rule
+#      - oidc
+#      - okta_import_rule
+#      - role
+#      - saml
+#      - session_recording_config
+#      - token
+#      - trusted_cluster
+#      - user
+#      verbs:
+#      - list
+#      - create
+#      - read
+#      - update
+#      - delete
+#---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7
 metadata:
@@ -40,21 +40,22 @@ metadata:
 spec:
   allow:
     app_labels:
-      'env': ['dev']
+      'tier': ['dev']
+      'aws/env': 'dev'
     aws_role_arns:
       - '{{internal.aws_role_arns}}'
     db_labels:
-      'env': ['dev']
+      'tier': ['dev']
     db_names:
     - '{{internal.db_names}}'
     - '*'
     db_roles:
     - '{{internal.db_roles}}'
+    - dbadmin
     db_users:
     - '{{internal.db_users}}'
     - '*'
-    - bob
-    - alice
+    - postgres
     desktop_groups:
     - Administrators
     impersonate:
@@ -67,21 +68,19 @@ spec:
       modes:
       - moderator
       - observer
-      name: Join prod sessions
+      name: Join dev sessions
       roles:
-      - '*'
+      - 'dev-access'
     kubernetes_groups:
     - '{{internal.kubernetes_groups}}'
     - system:masters
     kubernetes_labels:
-      env: dev
+      tier: dev
     kubernetes_resources:
     - kind: '*'
       name: '*'
       namespace: 'dev'
       verbs: ['*']
-    kubernetes_groups:
-    - system:masters
     logins:
     - '{{internal.logins}}'
     - '{{email.local(external.username)}}'
@@ -90,7 +89,7 @@ spec:
     - debian
     - ec2-user
     node_labels:
-      env: dev
+      tier: dev
     rules:
     - resources:
       - event
@@ -103,13 +102,20 @@ spec:
       - read
       - list
     windows_desktop_labels:
-      env: dev
+      tier: dev
     windows_desktop_logins:
     - '{{internal.windows_logins}}'
     - '{{email.local(external.username)}}'
     - Administrator
   options:
+    create_db_user: true
     create_desktop_user: true
+    create_host_user_mode: keep #https://goteleport.com/docs/enroll-resources/server-access/guides/host-user-creation/
+    create_host_user_default_shell: /bin/bash
+    desktop_clipboard: true
+    desktop_directory_sharing: true #https://goteleport.com/docs/enroll-resources/desktop-access/directory-sharing/
+    max_session_ttl: 8h0m0s
+    pin_source_ip: false
 ---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7
@@ -118,19 +124,22 @@ metadata:
 spec:
   allow:
     app_labels:
-      'env': ['prod']
+      'tier': ['prod']
+      'aws/env': 'prod'
     aws_role_arns:
       - '{{internal.aws_role_arns}}'
     db_labels:
-      'env': ['prod']
+      'tier': ['prod']
     db_names:
     - '{{internal.db_names}}'
     - '*'
     db_roles:
     - '{{internal.db_roles}}'
+    - dbadmin
     db_users:
     - '{{internal.db_users}}'
     - '*'
+    - postgres
     desktop_groups:
     - Administrators
     impersonate:
@@ -166,7 +175,7 @@ spec:
     - debian
     - ec2-user
     node_labels:
-      env: prod
+      tier: prod
     rules:
     - resources:
       - event
@@ -179,13 +188,20 @@ spec:
       - read
       - list
     windows_desktop_labels:
-      env: prod
+      tier: prod
     windows_desktop_logins:
     - '{{internal.windows_logins}}'
     - '{{email.local(external.username)}}'
     - Administrator
   options:
+    create_db_user: true
+    create_desktop_user: true
+    create_host_user_mode: keep #https://goteleport.com/docs/enroll-resources/server-access/guides/host-user-creation/
+    create_host_user_default_shell: /bin/bash
+    desktop_clipboard: true
+    desktop_directory_sharing: true #https://goteleport.com/docs/enroll-resources/desktop-access/directory-sharing/
     max_session_ttl: 1h0m0s
+    pin_source_ip: true
 ---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7

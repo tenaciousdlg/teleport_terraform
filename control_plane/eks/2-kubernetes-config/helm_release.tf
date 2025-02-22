@@ -40,6 +40,7 @@ resource "helm_release" "teleport_cluster" {
         type = "saml"
       }
       # persistent backend with pvc via ebs_csi
+      # https://goteleport.com/docs/reference/helm-reference/teleport-cluster/#persistence
       persistence = {
         enabled = true
       }
