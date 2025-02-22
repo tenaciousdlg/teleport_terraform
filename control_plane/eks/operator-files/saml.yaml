@@ -1,0 +1,24 @@
+apiVersion: resources.teleport.dev/v2
+kind: TeleportSAMLConnector
+metadata:
+  name: "okta-dlg"
+spec:
+  acs: "https://$DOMAIN:443/v1/webapi/saml/acs/okta"
+  attributes_to_roles:
+    #- {name: "groups", value: "Everyone", roles: ["requester"]}
+    - {name: "groups", value: "admins", roles: ["access", "auditor", "dev-access", "editor", "group-access", "reviewer", "prod-access"]}
+  display: "dlg okta"
+  entity_descriptor_url: "https://dev-94466015.okta.com/app/exkhxwe3ncnGyjry55d7/sso/saml/metadata"
+  service_provider_issuer: "https://$DOMAIN/sso/saml/metadata"
+---
+apiVersion: resources.teleport.dev/v2
+kind: TeleportSAMLConnector
+metadata:
+  name: "okta-preview"
+spec:
+  acs: "https://$DOMAIN/v1/webapi/saml/acs/okta-preview"
+  attributes_to_roles:
+    - {name: "groups", value: "Solutions-Engineering", roles: ["auditor", "access", "device-enroll", "editor", "requester", "dev-access"]}
+  display: "okta"
+  entity_descriptor_url: "https://gravitational-preview.oktapreview.com/app/exkftll0o8X4SCO6k1d7/sso/saml/metadata"
+  service_provider_issuer: "https://$DOMAIN/sso/saml/metadata"

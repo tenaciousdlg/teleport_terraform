@@ -1,0 +1,22 @@
+apiVersion: resources.teleport.dev/v1
+kind: TeleportAccessList
+metadata:
+  name: support-engineers
+spec:
+  title: "Production access for support engineers"
+  description: "Use this Access List to grant access to production to your engineers enrolled in the support rotation."
+  audit:
+    recurrence:
+      frequency: 6months
+  owners:
+    - description: "manager of NA support team"
+      name: alice
+  ownership_requires:
+    roles:
+      - manager
+  grants:
+    roles:
+      - dev-access
+  membership_requires:
+    roles:
+      - engineer

@@ -1,0 +1,215 @@
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: terraform
+spec:
+  allow:
+    app_labels:
+      '*': '*'
+    db_labels:
+      '*': '*'
+    rules:
+    - resources:
+      - app
+      - cluster_auth_preference
+      - cluster_networking_config
+      - db
+      - device
+      - github
+      - login_rule
+      - oidc
+      - okta_import_rule
+      - role
+      - saml
+      - session_recording_config
+      - token
+      - trusted_cluster
+      - user
+      verbs:
+      - list
+      - create
+      - read
+      - update
+      - delete
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: dev-access
+spec:
+  allow:
+    app_labels:
+      'env': ['dev']
+    aws_role_arns:
+      - '{{internal.aws_role_arns}}'
+    db_labels:
+      'env': ['dev']
+    db_names:
+    - '{{internal.db_names}}'
+    - '*'
+    db_roles:
+    - '{{internal.db_roles}}'
+    db_users:
+    - '{{internal.db_users}}'
+    - '*'
+    - bob
+    - alice
+    desktop_groups:
+    - Administrators
+    impersonate:
+      users: ["Db"]
+      roles: ["Db"]
+    join_sessions:
+    - kinds:
+      - k8s
+      - ssh
+      modes:
+      - moderator
+      - observer
+      name: Join prod sessions
+      roles:
+      - '*'
+    kubernetes_groups:
+    - '{{internal.kubernetes_groups}}'
+    - system:masters
+    kubernetes_labels:
+      env: dev
+    kubernetes_resources:
+    - kind: '*'
+      name: '*'
+      namespace: 'dev'
+      verbs: ['*']
+    kubernetes_groups:
+    - system:masters
+    logins:
+    - '{{internal.logins}}'
+    - '{{email.local(external.username)}}'
+    - '{{email.local(external.email)}}'
+    - ubuntu
+    - debian
+    - ec2-user
+    node_labels:
+      env: dev
+    rules:
+    - resources:
+      - event
+      verbs:
+      - list
+      - read
+    - resources:
+      - session
+      verbs:
+      - read
+      - list
+    windows_desktop_labels:
+      env: dev
+    windows_desktop_logins:
+    - '{{internal.windows_logins}}'
+    - '{{email.local(external.username)}}'
+    - Administrator
+  options:
+    create_desktop_user: true
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: prod-access
+spec:
+  allow:
+    app_labels:
+      'env': ['prod']
+    aws_role_arns:
+      - '{{internal.aws_role_arns}}'
+    db_labels:
+      'env': ['prod']
+    db_names:
+    - '{{internal.db_names}}'
+    - '*'
+    db_roles:
+    - '{{internal.db_roles}}'
+    db_users:
+    - '{{internal.db_users}}'
+    - '*'
+    desktop_groups:
+    - Administrators
+    impersonate:
+      users: ["Db"]
+      roles: ["Db"]
+    join_sessions:
+    - kinds:
+      - k8s
+      - ssh
+      modes:
+      - moderator
+      - observer
+      name: Join prod sessions
+      roles:
+      - '*'
+    kubernetes_groups:
+    - '{{internal.kubernetes_groups}}'
+    - system:masters
+    kubernetes_labels:
+      '*': '*'
+    kubernetes_resources:
+    - kind: '*'
+      name: '*'
+      namespace: 'prod'
+      verbs: ['*']
+    kubernetes_groups:
+    - system:masters
+    logins:
+    - '{{internal.logins}}'
+    - '{{email.local(external.username)}}'
+    - '{{email.local(external.email)}}'
+    - ubuntu
+    - debian
+    - ec2-user
+    node_labels:
+      env: prod
+    rules:
+    - resources:
+      - event
+      verbs:
+      - list
+      - read
+    - resources:
+      - session
+      verbs:
+      - read
+      - list
+    windows_desktop_labels:
+      env: prod
+    windows_desktop_logins:
+    - '{{internal.windows_logins}}'
+    - '{{email.local(external.username)}}'
+    - Administrator
+  options:
+    max_session_ttl: 1h0m0s
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: reviewer
+spec:
+  allow:
+    review_requests:
+      preview_as_roles:
+      - access
+      - prod-access
+      roles:
+      - access
+      - prod-access
+---
+apiVersion: resources.teleport.dev/v1
+kind: TeleportRoleV7
+metadata:
+  name: requester
+spec:
+  allow:
+    request:
+      roles:
+      - prod-access
+      search_as_roles:
+      - access
+      - prod-access

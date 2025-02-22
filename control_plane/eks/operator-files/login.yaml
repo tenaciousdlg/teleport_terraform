@@ -1,0 +1,19 @@
+apiVersion: resources.teleport.dev/v1
+kind: TeleportLoginRule
+metadata:
+  name: okta-preferred-login-rule
+spec:
+  priority: 0
+  traits_map:
+    logins:
+      - 'external.logins'
+      - 'strings.lower(external.username)'
+    groups:
+      - external.groups
+  traits_expression: |
+    external.put("logins",
+      choose(
+        option(external.groups.contains("okta"), "okta"),
+        option(true, "local")
+      )
+    )
