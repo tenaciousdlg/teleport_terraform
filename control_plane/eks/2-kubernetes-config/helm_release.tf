@@ -22,6 +22,7 @@ resource "helm_release" "teleport_cluster" {
 
   values = [
     jsonencode({
+      # https://goteleport.com/docs/reference/helm-reference/teleport-cluster/
       clusterName       = var.cluster_name
       proxyListenerMode = "multiplex"
       acme              = true
@@ -34,7 +35,11 @@ resource "helm_release" "teleport_cluster" {
       operator = {
         enabled = true
       }
-      # testing for PVC
+      # auth options
+      authentication = {
+        type = "saml"
+      }
+      # persistent backend with pvc via ebs_csi
       persistence = {
         enabled = true
       }
