@@ -1,3 +1,4 @@
+# Teleport EKS Deployment Documentation
 1. Prerequisites
 
 Ensure the following tools are installed on your machine:
