@@ -9,7 +9,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "15.3.0"
+      version = "~> 16.0"
     }
   }
 }
@@ -28,7 +28,6 @@ provider "aws" {
 }
 provider "teleport" {
   addr               = "${var.proxy_service_address}:443"
-  identity_file_path = var.identity_path
 }
 
 provider "random" {
@@ -89,7 +88,7 @@ resource "teleport_role" "ansible" {
   }
   spec = {
     allow = {
-      logins = ["root"] # Replace this with the system user Ansible will use to login
+      logins = ["ubuntu", "ec2-user"] # Replace this with the system user Ansible will use to login
       node_labels = {
         "*" : ["*"] # Adjust node labels to match the nodes Ansible needs to access. In this example we are saying all nodes and login as ansible 
       }
