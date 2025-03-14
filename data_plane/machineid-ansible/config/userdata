@@ -37,7 +37,7 @@ ssh_service:
     command: [hostname]
     period: 1m0s
   labels:
-    env: dev
+    tier: dev
     os: ubuntu
     cloud: aws
   enhanced_recording:
@@ -129,11 +129,44 @@ ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o Canonica
 EOF
 
 sudo cat <<-EOF > /home/ubuntu/ansible/playbook.yaml
-- hosts: all
-  remote_user: root
+---
+- name: Check Teleport and SSHD status
+  hosts: all
+  remote_user: ubuntu
+  become: true
+  gather_facts: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
-    - name: "hostname"
-      command: "hostname"
+    - name: check Teleport and SSHD service status
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+      register: service_status
+      loop:
+        - teleport
+        - sshd
+      failed_when: false
+
+    - name: get Teleport version if running
+      command: teleport version
+      register: teleport_version
+      when: service_status.results[0].status.ActiveState == "active"
+      changed_when: false
+      failed_when: false
+
+    - name: stop SSHD if running
+      ansible.builtin.systemd:
+        name: sshd
+        state: stopped
+      when: service_status.results[1].status.ActiveState == "active"
+    
+    - name: display results
+      debug:
+        msg:
+          - "hostname: {{ ansible_facts['hostname'] }}"
+          - "Teleport is {{ 'running' if service_status.results[0].status.ActiveState == 'active' else 'not running' }}"
+          - "Teleport Version: {{ teleport_version.stdout_lines[0] if teleport_version.stdout is defined else 'N/A' }}"
+          - "SSHD was {{ 'running and stopped' if service_status.results[1].status.ActiveState == 'active' else 'not running' }}"
 
 EOF
 
