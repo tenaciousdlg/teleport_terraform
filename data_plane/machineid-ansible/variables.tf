@@ -11,11 +11,6 @@ variable "aws_region" {
   description = "region to deploy AWS resources"
 }
 
-variable "identity_path" {
-  type        = string
-  description = "file path location of identity file for teleport terraform provider"
-}
-
 variable "teleport_version" {
   type        = string
   description = "Version of Teleport to install on each agent"
