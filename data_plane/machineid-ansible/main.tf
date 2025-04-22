@@ -201,7 +201,7 @@ resource "aws_instance" "main" {
   }
 
   tags = {
-    Name = "${var.proxy_address}-machineid-ansible"
+    Name = "${split(".", var.proxy_address)[0]}-machineid-ansible"
   }
 }
 ##################################################################################
