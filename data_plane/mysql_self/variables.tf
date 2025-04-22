@@ -1,4 +1,4 @@
-variable "proxy_service_address" {
+variable "proxy_address" {
   type        = string
   description = "Host and HTTPS port of the Teleport Proxy Service"
 }
@@ -6,11 +6,6 @@ variable "proxy_service_address" {
 variable "aws_region" {
   type        = string
   description = "Region in which to deploy AWS resources"
-}
-
-variable "identity_path" {
-  type        = string
-  description = "file path location of identity file for teleport terraform provider"
 }
 
 variable "teleport_version" {

@@ -9,7 +9,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "15.3.0"
+      version = "~> 16.0"
     }
   }
 }
@@ -20,16 +20,15 @@ provider "aws" {
   region = var.aws_region
   default_tags {
     tags = {
-      "teleport.dev/creator" = "dlg@goteleport.com"
+      "teleport.dev/creator" = var.user
       "Purpose"              = "teleport mysql self hosted demo"
-      "Env"                  = "dev"
+      "tier"                  = "dev"
     }
   }
 }
 
 provider "teleport" {
-  addr               = "${var.proxy_service_address}:443"
-  identity_file_path = var.identity_path
+  addr               = "${var.proxy_address}:443"
 }
 
 provider "vault" {
@@ -138,7 +137,7 @@ resource "aws_instance" "main" {
   subnet_id                   = aws_subnet.main.id
   user_data = templatefile("./config/userdata", {
     token  = teleport_provision_token.db.metadata.name
-    domain = var.proxy_service_address
+    domain = var.proxy_address
     sqlcas = base64decode(data.vault_kv_secret.mysql.data["cas"])
     sqlcrt = base64decode(data.vault_kv_secret.mysql.data["crt"])
     sqlkey = base64decode(data.vault_kv_secret.mysql.data["key"])
@@ -153,6 +152,10 @@ resource "aws_instance" "main" {
   # Prevents resource being recreated for minor versions of AMI 
   lifecycle {
     ignore_changes = [ami, user_data]
+  }
+
+  tags = {
+    Name = "${split(".", var.proxy_address)[0]}-mysql"
   }
 }
 ##################################################################################
