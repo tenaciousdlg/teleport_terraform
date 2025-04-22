@@ -21,13 +21,13 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "Purpose"              = "teleport machine ID with ansible demo"
-      "Env"                  = "dev"
+      "Purpose"              = "teleport machine id with ansible demo"
+      "tier"                  = "dev"
     }
   }
 }
 provider "teleport" {
-  addr               = "${var.proxy_service_address}:443"
+  addr               = "${var.proxy_address}:443"
 }
 
 provider "random" {
@@ -186,7 +186,7 @@ resource "aws_instance" "main" {
   user_data = templatefile("./config/userdata", {
     token     = teleport_provision_token.main.metadata.name
     bot_token = teleport_bot.ansible.token_id
-    domain    = var.proxy_service_address
+    domain    = var.proxy_address
     major     = var.teleport_version
   })
 
@@ -198,6 +198,10 @@ resource "aws_instance" "main" {
 
   root_block_device {
     encrypted = true
+  }
+
+  tags = {
+    Name = "${var.proxy_address}-machineid-ansible"
   }
 }
 ##################################################################################

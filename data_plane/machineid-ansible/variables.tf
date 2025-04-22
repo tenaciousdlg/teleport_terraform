@@ -1,7 +1,7 @@
 ##################################################################################
 # VARIABLES
 ##################################################################################
-variable "proxy_service_address" {
+variable "proxy_address" {
   type        = string
   description = "hostname of the teleport environment"
 }
