@@ -42,7 +42,7 @@ db_service:
     protocol: "mysql"
     uri: "localhost:3306"
     static_labels:
-      "env": "dev"
+      "tier": "dev"
       "os": "ubuntu"
       "cloud": "aws"
 auth_service:
