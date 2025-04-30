@@ -1,5 +1,5 @@
 ##################################################################################
-# CONFIGURATION 
+# CONFIGURATION / PROVIDERS
 ##################################################################################
 terraform {
   required_providers {
@@ -13,51 +13,47 @@ terraform {
     }
   }
 }
-##################################################################################
-# PROVIDERS
-##################################################################################
+# allows creation of aws resources
 provider "aws" {
   region = var.aws_region
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
       "Purpose"              = "teleport mysql self hosted demo"
-      "tier"                  = "dev"
+      "tier"                 = "dev"
     }
   }
 }
-
+# allows creation of teleport resources
 provider "teleport" {
-  addr               = "${var.proxy_address}:443"
+  addr = "${var.proxy_address}:443"
 }
-
-provider "vault" {
-  address = "http://127.0.0.1:8200"
+# TESTING
+provider "tls" {
+  
 }
-
+# used for random data with ids/tokens
 provider "random" {
 }
 ##################################################################################
-# DATA SOURCES
+# DATA SOURCES / LOCALS
 ##################################################################################
+# dynamically sources AMI for ubuntu 22.04
 data "aws_ami" "ubuntu" {
   most_recent = true
-
   filter {
     name   = "name"
     values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
   }
-
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-
   owners = ["099720109477"] # aws ec2 describe-images --image-ids ami-024e6efaf93d85776 --output json | jq '.Images[] | {Platform, OwnerId}'
 }
-
-data "vault_kv_secret" "mysql" {
-  path = "secret/mysql"
+# reference for troubleshooting ## REMOVE ME
+data "http" "myip" {
+  url = "http://ipv4.icanhazip.com"
 }
 ##################################################################################
 # RESOURCES
@@ -67,18 +63,91 @@ resource "random_string" "uuid" {
   length  = 4
   special = false
 }
+# TESTING
+resource "tls_private_key" "ca_key" {
+  algorithm = "RSA"
+  rsa_bits = 4096
+}
+resource "tls_self_signed_cert" "ca_cert" {
+  private_key_pem = tls_private_key.ca_key.private_key_pem
 
+  subject {
+    common_name = "example"
+    organization = "example"
+  }
+
+  validity_period_hours = 87600 # 10 years
+  is_ca_certificate = true
+  allowed_uses = [
+    "cert_signing",
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth",
+  ]
+}
+resource "tls_private_key" "server_key" {
+  algorithm = "RSA"
+  rsa_bits = 2048
+}
+resource "tls_cert_request" "server_csr" {
+  private_key_pem = tls_private_key.server_key.private_key_pem
+
+  subject {
+    common_name = "mysql.example.internal" #mysql server hostname
+    organization = "example org"
+  }
+
+  dns_names = [
+    "mysql.example.internal",
+    "localhost",
+    "127.0.0.1"
+  ]
+}
+resource "tls_locally_signed_cert" "server_cert" {
+  cert_request_pem = tls_cert_request.server_csr.cert_request_pem
+  ca_private_key_pem = tls_private_key.ca_key.private_key_pem
+  ca_cert_pem = tls_self_signed_cert.ca_cert.cert_pem
+
+  validity_period_hours = 8760 # 1 year
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth",
+  ]
+}
+# provision token for db and ssh services
+resource "teleport_provision_token" "db" {
+  version = "v2"
+  spec = {
+    roles = [
+      "Db",
+      "Node",
+    ]
+    name = random_string.uuid.result
+  }
+  metadata = {
+    expires = timeadd(timestamp(), "1h")
+  }
+}
+# aws networking 
 resource "aws_vpc" "main" {
   cidr_block           = var.cidr_vpc
   enable_dns_hostnames = true
   enable_dns_support   = true
 }
-
 resource "aws_security_group" "main" {
   depends_on  = [aws_vpc.main]
   vpc_id      = aws_vpc.main.id
   name        = "egress out"
   description = "allow only egress networking"
+  ingress { # TESTING
+    from_port = 22 # TESTING
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -86,17 +155,14 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 resource "aws_internet_gateway" "main" {
   depends_on = [aws_vpc.main]
   vpc_id     = aws_vpc.main.id
 }
-
 resource "aws_subnet" "main" {
   vpc_id     = aws_vpc.main.id
   cidr_block = var.cidr_subnet
 }
-
 resource "aws_route_table" "main" {
   depends_on = [aws_vpc.main, aws_internet_gateway.main]
   vpc_id     = aws_vpc.main.id
@@ -105,42 +171,25 @@ resource "aws_route_table" "main" {
     gateway_id = aws_internet_gateway.main.id
   }
 }
-
 resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.main.id
   route_table_id = aws_route_table.main.id
 }
-
-resource "random_string" "token" {
-  length = 32
-}
-# https://goteleport.com/docs/reference/terraform-provider/#teleport_provision_token
-resource "teleport_provision_token" "db" {
-  version = "v2"
-  spec = {
-    roles = [
-      "Db",
-      "Node",
-    ]
-    name = random_string.token.result
-  }
-  metadata = {
-    expires = timeadd(timestamp(), "1h")
-  }
-}
-
+# creates ec2 instance
 resource "aws_instance" "main" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.small"
   associate_public_ip_address = true
   security_groups             = [aws_security_group.main.id]
   subnet_id                   = aws_subnet.main.id
+  key_name = "dlg-aws"
   user_data = templatefile("./config/userdata", {
-    token  = teleport_provision_token.db.metadata.name
-    domain = var.proxy_address
-    sqlcas = base64decode(data.vault_kv_secret.mysql.data["cas"])
-    sqlcrt = base64decode(data.vault_kv_secret.mysql.data["crt"])
-    sqlkey = base64decode(data.vault_kv_secret.mysql.data["key"])
+    token      = teleport_provision_token.db.metadata.name
+    domain     = var.proxy_address
+    major      = var.teleport_version
+    ca         = tls_self_signed_cert.ca_cert.cert_pem
+    cert       = tls_locally_signed_cert.server_cert.cert_pem
+    key        = tls_private_key.server_key.private_key_pem
   })
   metadata_options {
     http_endpoint = "enabled"
@@ -153,7 +202,6 @@ resource "aws_instance" "main" {
   lifecycle {
     ignore_changes = [ami, user_data]
   }
-
   tags = {
     Name = "${split(".", var.proxy_address)[0]}-mysql"
   }
