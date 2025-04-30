@@ -15,7 +15,7 @@ variable "teleport_token_name" {
 
 variable "ssh_key" {
   description = "AWS SSH key for instance"
-  default     = ""
+  default     = "dlg-aws"
 }
 
 variable "teleport_install_type" {
@@ -36,12 +36,12 @@ variable "windows_machine_size" {
 
 variable "teleport_windows_label" {
   type    = string
-  default = "env: dev"
+  default = "tier: prod"
 }
 
 variable "teleport_ssh_label" {
   type    = string
-  default = "env: dev"
+  default = "tier: prod"
 }
 
 variable "agent_machine_name" {
@@ -71,7 +71,7 @@ variable "ami_amazonlinx_search" {
 
 variable "aws_key_label" {
   type    = string
-  default = "env"
+  default = "tier"
 }
 
 variable "aws_value_label" {
@@ -82,7 +82,7 @@ variable "aws_value_label" {
 
 variable "agent_machine_size" {
   type    = string
-  default = "t2.micro"
+  default = "t2.small"
 }
 
 variable "aws_region" {

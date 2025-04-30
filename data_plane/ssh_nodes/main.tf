@@ -76,12 +76,12 @@ resource "aws_security_group" "egress" {
   }
   name        = "allow outbound"
   description = "allow egress access to internet for ec2 instances"
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
-  }
+#  ingress {
+#    from_port   = 22
+#    to_port     = 22
+#    protocol    = "tcp"
+#    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
+#  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -133,7 +133,6 @@ resource "aws_instance" "teleport_agent" {
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.egress.id]
-  key_name               = var.ssh_key
   user_data = templatefile("./config/userdata", {
     token                 = teleport_provision_token.agent[count.index].metadata.name
     proxy_service_address = var.proxy_service_address

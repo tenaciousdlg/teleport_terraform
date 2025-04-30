@@ -20,7 +20,7 @@ teleport:
 ssh_service:
   enabled: true
   labels:
-    env: dev
+    tier: dev
     os: amz-lin
   commands: #https://goteleport.com/docs/management/admin/labels/
     - name: "hostname"

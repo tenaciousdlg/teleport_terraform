@@ -1,35 +1,27 @@
 #!/bin/bash
 #########################################################
 # amzlinux jump host for Windows Desktop
-# Installs system tools for troubleshooting
+# installs system tools for troubleshooting
 #########################################################
 sudo hostnamectl set-hostname ${agent_machine_name}
-sudo dnf install -y net-tools vim wget
 #########################################################
 # teleport installation 
 #########################################################
-# Installs teleport enterprise edition 
-TELEPORT_EDITION="${teleport_install_type}"
-TELEPORT_VERSION="$(curl https://${domain}${teleport_version_channel} | sed 's/v//')"
-curl https://cdn.teleport.dev/install-v$TELEPORT_VERSION.sh > /tmp/installteleport.sh
-bash /tmp/installteleport.sh $TELEPORT_VERSION $TELEPORT_EDITION
-if [[ "${teleport_install_upgrader}" == "true" && "${teleport_install_type}" == "enterprise" ]];     then
-  yum install  teleport-ent-updater -y
-fi
+# installs teleport enterprise edition 
+# update for versions >17.3 
+curl "https://${domain}/scripts/install.sh" | sudo bash
 # Teleport does not allow periods in windows names
 WINDOWS_HOST_NAME=$(echo "${windows_internal_dns}" | awk -F. '{print $1}')
-
 #########################################################
 # teleport configuration
 #########################################################
- Creates teleport configuration file
+echo ${token} > /tmp/token
+
 sudo cat << EOF > /etc/teleport.yaml
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
-  join_params:
-    method: "${teleport_join_method}"
-    token_name: "${teleport_token_name}"
+  auth_token: /tmp/token
   proxy_server: ${domain}:443
   log:
     output: stderr
@@ -72,11 +64,6 @@ windows_desktop_service:
       cloud: aws
       os: windows
 EOF
-
-# write to file the token file if it's a token type
-if [[ "${teleport_join_method}" == "token" ]];     then
-  echo ${token} > ${teleport_token_name}
-fi
 # Sets teleport service to start at boot and brings it up
 systemctl enable teleport;
 systemctl restart teleport;

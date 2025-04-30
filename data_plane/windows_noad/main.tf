@@ -37,7 +37,14 @@ provider "random" {
 ##################################################################################
 # RESOURCES
 ##################################################################################
-# instance networking
+#debug
+data "http" "myip" {
+  url = "http://ipv4.icanhazip.com"
+}
+
+
+
+# networking
 resource "random_string" "uuid" {
   length  = 4
   special = false
@@ -60,6 +67,12 @@ resource "aws_security_group" "local" {
     protocol    = "-1"
     cidr_blocks = [var.cidr_vpc]
     self        = true
+  }
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
   }
   egress {
     from_port   = 0
@@ -118,7 +131,6 @@ resource "aws_route_table_association" "private" {
 }
 
 # windows instance configuration
-## Add data source for Windows AMI
 resource "random_string" "windows" {
   length = 40
 }
@@ -241,6 +253,7 @@ resource "aws_instance" "linux_jump" {
   }
   root_block_device {
     encrypted = true
+    volume_size = "5"
   }
 }
 ##################################################################################
