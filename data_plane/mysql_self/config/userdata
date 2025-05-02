@@ -2,6 +2,7 @@
 #########################################################
 # package installs
 #########################################################
+sudo hostnamectl set-hostname "mysql"
 sudo apt update && sudo apt upgrade -y 
 sudo apt install -y mariadb-server mariadb-client jq
 sudo systemctl enable mariadb
@@ -16,11 +17,9 @@ y
 y
 EOF
 ########################################################
-## teleport installation ##needs work
+## teleport installation 
 #########################################################
-## ENT Edition
-curl -s https://goteleport.com/static/install.sh | bash -s $(curl -s https://${domain}/v1/webapi/ping | jq -r '.server_version') enterprise
-echo ${token} > /var/lib/teleport/token
+curl https://goteleport.com/static/install.sh | bash -s "${major}" "enterprise"
 #########################################################
 ## teleport configuration
 #########################################################
@@ -29,7 +28,7 @@ version: v3
 teleport:
   data_dir: "/var/lib/teleport"
   proxy_server: "${domain}:443"
-  auth_token: "/var/lib/teleport/token"
+  auth_token: "${token}"
   log:
     output: stderr
     severity: INFO
@@ -38,35 +37,34 @@ teleport:
 db_service:
   enabled: true
   databases:
-  - name: "mysqldb"
+  - name: "dev-mysql"
     protocol: "mysql"
     uri: "localhost:3306"
+    tls:
+      ca_cert_file: "/etc/mysql/ssl/server.cas"
     static_labels:
       "tier": "dev"
-      "os": "ubuntu"
-      "cloud": "aws"
 auth_service:
   enabled: "no"
 ssh_service:
-  enabled: "no"
+  enabled: "true"
+  labels:
+    tier: dev
 proxy_service:
   enabled: "no"
 app_service:
   enabled: "no"
 EOF
-systemctl enable teleport
-systemctl restart teleport
+
 #########################################################
 ## mariaDB/mysql teleport configuration
 #########################################################
+# cert installation 
 sudo mkdir -p /etc/mysql/ssl
-sudo touch /etc/mysql/ssl/server.cas
-sudo touch /etc/mysql/ssl/server.crt
-sudo touch /etc/mysql/ssl/server.key
-# Quoting the variable variable is needed here. Otherwise echo will paste each line of the variable into STDIN
-sudo echo "${sqlcas}" > /etc/mysql/ssl/server.cas
-sudo echo "${sqlcrt}" > /etc/mysql/ssl/server.crt
-sudo echo "${sqlkey}" > /etc/mysql/ssl/server.key
+sudo echo "${ca}" > /etc/mysql/ssl/server.cas
+sudo echo "${cert}" > /etc/mysql/ssl/server.crt
+sudo echo "${key}" > /etc/mysql/ssl/server.key
+# mysql config 
 sudo cat << EOF > /etc/mysql/conf.d/mysql.cnf
 [mariadb]
 require_secure_transport=ON
@@ -83,4 +81,6 @@ sudo mysql -u root -e "GRANT SELECT ON *.* TO 'bob'@`%`;"
 sudo mysql -u root -e "GRANT SHOW VIEW ON *.* TO 'bob'@`%`"
 sudo mysql -u root -e "FLUSH PRIVILEGES;"
 sudo systemctl restart mariadb
+systemctl enable teleport
+systemctl restart teleport
 #########################################################
