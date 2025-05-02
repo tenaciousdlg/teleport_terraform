@@ -38,3 +38,6 @@ terraform.rc
 
 # k8s config files
 kubeconfig-*
+
+# license files
+*license*
