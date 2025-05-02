@@ -41,7 +41,7 @@ spec:
   allow:
     app_labels:
       'tier': ['dev']
-      'aws/env': 'dev'
+      'aws/env': ['dev']
     aws_role_arns:
       - '{{internal.aws_role_arns}}'
     db_labels:
@@ -124,12 +124,15 @@ metadata:
 spec:
   allow:
     app_labels:
-      'tier': ['prod']
-      'aws/env': 'prod'
+     - 'tier': ['prod']
+     - 'aws/env': ['prod']
+     - 'tier': ['dev']
+     - 'aws/env': ['dev']
     aws_role_arns:
       - '{{internal.aws_role_arns}}'
     db_labels:
-      'tier': ['prod']
+    - 'tier': ['prod']
+    - 'tier': 'dev'
     db_names:
     - '{{internal.db_names}}'
     - '*'
@@ -165,8 +168,6 @@ spec:
       name: '*'
       namespace: 'prod'
       verbs: ['*']
-    kubernetes_groups:
-    - system:masters
     logins:
     - '{{internal.logins}}'
     - '{{email.local(external.username)}}'
@@ -175,7 +176,8 @@ spec:
     - debian
     - ec2-user
     node_labels:
-      tier: prod
+    -  tier: prod
+    -  tier: dev
     rules:
     - resources:
       - event
@@ -188,7 +190,7 @@ spec:
       - read
       - list
     windows_desktop_labels:
-      tier: prod
+    -  tier: ['prod', 'dev']
     windows_desktop_logins:
     - '{{internal.windows_logins}}'
     - '{{email.local(external.username)}}'
@@ -201,7 +203,7 @@ spec:
     desktop_clipboard: true
     desktop_directory_sharing: true #https://goteleport.com/docs/enroll-resources/desktop-access/directory-sharing/
     max_session_ttl: 1h0m0s
-    pin_source_ip: true
+    pin_source_ip: false
 ---
 apiVersion: resources.teleport.dev/v1
 kind: TeleportRoleV7
