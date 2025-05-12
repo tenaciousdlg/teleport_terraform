@@ -67,5 +67,6 @@ EOF
 
 sudo systemctl enable teleport.service 
 sudo systemctl restart teleport.service 
+sleep 5
 sudo tctl tokens add --type node,proxy --format=text > /tmp/token
 aws s3 cp /tmp/token s3://${bucket}/token

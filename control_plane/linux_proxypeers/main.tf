@@ -111,7 +111,7 @@ resource "aws_route_table_association" "main" {
 }
 # storage
 resource "aws_s3_bucket" "main" {
-  bucket = "${local.username}_linux_proxypeers"
+  bucket = "${local.username}proxypeers"
 }
 # iam
 resource "aws_iam_role" "ec2_role" {
@@ -200,13 +200,6 @@ resource "aws_instance" "proxy" {
     Role = "proxy service"
   }
 }
-
-output "ips" {
-  value = {
-    main  = aws_instance.main.public_ip
-    proxy = aws_instance.proxy.public_ip
-  }
-}
 # dns
 # creates DNS record for teleport cluster on eks
 resource "aws_route53_record" "cluster_endpoint" {
@@ -224,4 +217,11 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
   type    = "A"
   ttl     = "300"
   records = [aws_instance.main.public_ip]
+}
+# outputs
+output "ips" { # remove when unneeded
+  value = {
+    main  = aws_instance.main.public_ip
+    proxy = aws_instance.proxy.public_ip
+  }
 }
