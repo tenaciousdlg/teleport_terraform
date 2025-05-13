@@ -22,11 +22,11 @@ This guide covers an important caveat about naming for this type of cluster arch
 
 > Only a single Proxy Service `public_addr` should be configured. Attempting to have multiple addresses can result in redirects to the first listed address that may not be available to the client.
 
-## Pre-requisites 
+## Prerequisites 
 
 - [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
-This example uses AWS and will require AWS CLI access to create resources via Terraform. 
+This example uses AWS and will require aws CLI access to create resources via Terraform. 
 
 This configuration will create a VPC, at least two EC2 instances (running Amazon Linux 2023), IAM policies, and a S3 bucket in AWS. 
 
@@ -67,7 +67,7 @@ An initial [Teleport Local User](https://goteleport.com/docs/admin-guides/manage
 
 The login link for this user is stored in the S3 bucket that this configuration creates. 
 
-To retrieve this run `aws s3 cp s3://your-bucket-name/user -` where `your-bucket-name` is the name of the bucket created by this configuration. 
+To retrieve this run `aws s3 cp s3://yourbucketname/user -` where `yourbucketname` is the name of the bucket created by this configuration. 
 
 ### Example of a populated `terraform.tfvars` file
 
