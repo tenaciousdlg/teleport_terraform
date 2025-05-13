@@ -231,7 +231,7 @@ output "ips" { # remove when unneeded
 resource "null_resource" "sleep" {
   depends_on = [ aws_instance.proxy ]
   provisioner "local-exec" {
-    command = "sleep 10"
+    command = "sleep 15"
   }
 }
 data "aws_s3_object" "user" {
