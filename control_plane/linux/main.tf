@@ -67,18 +67,6 @@ resource "aws_security_group" "main" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress { # allows proxies to peer
-    from_port   = 3021
-    to_port     = 3021
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"] #this should be sourced from another resource 
-  }
-  ingress { # allows peers to dial auth
-    from_port = 3025
-    to_port = 3025
-    protocol = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
   egress {
     from_port   = 0
     to_port     = 0
