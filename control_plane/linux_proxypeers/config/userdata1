@@ -72,6 +72,6 @@ sudo systemctl restart teleport.service
 sleep 5
 
 sudo tctl tokens add --type node,proxy --format=text > /tmp/token
-sudo tctl users add admin --roles=access,auditor,editor --logins=root,ubuntu,ec2-user > /tmp/user.txt
+sudo tctl users add admin --roles=access,auditor,editor --logins=root,ubuntu,ec2-user > /tmp/user
 aws s3 cp /tmp/token s3://${bucket}/token
-aws s3 cp /tmp/user.txt s3://${bucket}/user.txt
+aws s3 cp /tmp/user.txt s3://${bucket}/user

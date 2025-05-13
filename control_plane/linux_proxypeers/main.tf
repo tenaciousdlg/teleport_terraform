@@ -42,12 +42,6 @@ data "aws_ami" "main" {
     values = ["hvm"]
   }
 }
-# used to generate the login output for the initial teleport user
-#data "aws_s3_object" "user" {
-#  depends_on = [ aws_instance.proxy ]
-#  bucket = aws_s3_bucket.main.bucket
-#  key = "user.txt"
-#}
 # used for naming convention clean up (i.e. resource naming from jsmith@example.com-bucket to jsmith-bucket)
 locals {
   username = lower(split("@", var.user)[0])
@@ -225,14 +219,27 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
   ttl     = "300"
   records = [aws_instance.main.public_ip]
 }
-# outputs
+##################################################################################
+# OUTPUTS (and their child resources/datasources)
+##################################################################################
 output "ips" { # remove when unneeded
   value = {
     main  = aws_instance.main.public_ip
     proxy = aws_instance.proxy.public_ip
   }
 }
-#output "login_details" {
-#  value = data.aws_s3_object.user.body
-#  description = "contents of tctl users add being ran on the auth/proxy server"
-#}
+resource "null_resource" "sleep" {
+  depends_on = [ aws_instance.proxy ]
+  provisioner "local-exec" {
+    command = "sleep 10"
+  }
+}
+data "aws_s3_object" "user" {
+  depends_on = [ null_resource.sleep ]
+  bucket = aws_s3_bucket.main.bucket
+  key = "user"
+}
+output "login_details" {
+  value = data.aws_s3_object.user.body
+  description = "contents of tctl users add being ran on the auth/proxy server"
+}
