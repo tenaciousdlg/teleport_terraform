@@ -1,19 +1,24 @@
-# Self Hosted Teleport Cluster running on Amazon Linux 2023
-# With Proxy-Peering enabled 
+# Self Hosted Teleport Cluster running on Amazon Linux 2023 with Proxy-Peering enabled 
 
-This example links several Teleport guides together:
+The purpose of this example is to show how a basic Proxy Peered Teleport cluster can be configured. 
+
+To complete this workflow several Teleport guides are used:
 
 - [Self-Hosted Demo Cluster](https://goteleport.com/docs/admin-guides/deploy-a-cluster/linux-demo/)
+
 This document shows an example of setting up a Teleport Auth/Proxy/SSH services on a single Linux VM.
+
 - [Proxy Peering: Architecture](https://goteleport.com/docs/reference/architecture/proxy-peering/)
+
 - [Proxy Peering Migration](https://goteleport.com/docs/admin-guides/management/operations/proxy-peering/)
+
 This docuement provides the config changes needed for the primary Auth/Proxy service. 
+
 - [Networking](https://goteleport.com/docs/reference/networking/#public-address)
+
 Covers this important caveat about naming for this type of cluster architecture
 
 > Only a single Proxy Service `public_addr` should be configured. Attempting to have multiple addresses can result in redirects to the first listed address that may not be available to the client.
-
-The goal of this example is to show how a basic Proxy Peered Teleport cluster can be configured. 
 
 ## Pre-requisites 
 - aws-cli
