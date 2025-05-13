@@ -100,3 +100,7 @@ proxy_address    = "dlg.example.com"
 teleport_version = "17.4.8"
 user             = "dlg@example.com"
 ```
+
+## Ideas, Contributions, Comments?
+
+Pull requests are welcome. I can also be reached at @tenaciousdlg
