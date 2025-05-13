@@ -69,6 +69,12 @@ The login link for this user is stored in the S3 bucket that this configuration 
 To retrieve this run `aws s3 cp s3://yourbucketname/user -` where `yourbucketname` is the name of the bucket created by this configuration. 
 
 ```bash
+...
+Apply complete! Resources: 17 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+teleport_user_login_details = "aws s3 cp s3://dlgproxypeers/user -"
 ❯ aws s3 cp s3://dlgproxypeers/user -
 User "admin" has been created but requires a password. Share this URL with the user to complete user setup, link is valid for 1h:
 https://test.example.com:443/web/invite/1..0
