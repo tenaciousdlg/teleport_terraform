@@ -18,7 +18,7 @@ version: v3
 teleport:
   auth_token: /tmp/token
   nodename: proxy-peer
-  proxy_server: ${auth_ip}:3021
+  auth_server: ${auth_ip}:3021
   data_dir: /var/lib/teleport
   log:
     output: stderr

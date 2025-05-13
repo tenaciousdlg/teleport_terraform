@@ -29,19 +29,25 @@ data "aws_route53_zone" "main" {
 data "http" "myip" { # remove when unneeded
   url = "http://ipv4.icanhazip.com"
 }
-# dynamically sources AMI for ubuntu 22.04
-data "aws_ami" "ubuntu" {
+# data source for Amazon Linux 2023 (used due to aws cli/s3 workflow)
+data "aws_ami" "main" {
   most_recent = true
+  owners = ["amazon"]
   filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
+    name = "name"
+    values = ["al2023-ami-*-x86_64"]
   }
   filter {
-    name   = "virtualization-type"
+    name = "virtualization-type"
     values = ["hvm"]
   }
-  owners = ["099720109477"] # aws ec2 describe-images --image-ids ami-024e6efaf93d85776 --output json | jq '.Images[] | {Platform, OwnerId}'
 }
+# used to generate the login output for the initial teleport user
+#data "aws_s3_object" "user" {
+#  depends_on = [ aws_instance.proxy ]
+#  bucket = aws_s3_bucket.main.bucket
+#  key = "user.txt"
+#}
 # used for naming convention clean up (i.e. resource naming from jsmith@example.com-bucket to jsmith-bucket)
 locals {
   username = lower(split("@", var.user)[0])
@@ -112,6 +118,7 @@ resource "aws_route_table_association" "main" {
 # storage
 resource "aws_s3_bucket" "main" {
   bucket = "${local.username}proxypeers"
+  force_destroy = true
 }
 # iam
 resource "aws_iam_role" "ec2_role" {
@@ -147,7 +154,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 }
 # compute 
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.ubuntu.id
+  ami                    = data.aws_ami.main.id
   instance_type          = "t3.small"   #add variable for this 
   key_name               = var.key_name #remove when unneeded
   vpc_security_group_ids = [aws_security_group.main.id]
@@ -174,7 +181,7 @@ resource "aws_instance" "main" {
   }
 }
 resource "aws_instance" "proxy" {
-  ami                    = data.aws_ami.ubuntu.id
+  ami                    = data.aws_ami.main.id
   instance_type          = "t3.small"   #add variable for this 
   key_name               = var.key_name #remove when unneeded
   vpc_security_group_ids = [aws_security_group.main.id]
@@ -225,3 +232,7 @@ output "ips" { # remove when unneeded
     proxy = aws_instance.proxy.public_ip
   }
 }
+#output "login_details" {
+#  value = data.aws_s3_object.user.body
+#  description = "contents of tctl users add being ran on the auth/proxy server"
+#}

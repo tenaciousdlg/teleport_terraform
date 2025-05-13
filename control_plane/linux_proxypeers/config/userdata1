@@ -1,5 +1,7 @@
 #!/bin/bash
-# Variables
+# Confirm AWS CLI is ready
+aws --version || { echo "AWS CLI missing"; exit 1; }
+# variables
 TELEPORT_EDITION="enterprise"
 # Get 10.x.x.x private IP for proxy peering
 PRIVATE_IP=$(ip -o -4 addr show scope global | awk '/10\./ {print $4}' | cut -d/ -f1 | head -n1)
@@ -68,5 +70,8 @@ EOF
 sudo systemctl enable teleport.service 
 sudo systemctl restart teleport.service 
 sleep 5
+
 sudo tctl tokens add --type node,proxy --format=text > /tmp/token
+sudo tctl users add admin --roles=access,auditor,editor --logins=root,ubuntu,ec2-user > /tmp/user.txt
 aws s3 cp /tmp/token s3://${bucket}/token
+aws s3 cp /tmp/users.txt s3://${bucket}/user.txt
