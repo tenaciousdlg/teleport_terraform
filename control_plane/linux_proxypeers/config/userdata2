@@ -4,7 +4,7 @@ TELEPORT_EDITION="enterprise"
 PRIVATE_IP=$(ip -o -4 addr show scope global | awk '/10\./ {print $4}' | cut -d/ -f1 | head -n1)
 
 # Set hostname
-sudo hostnamectl set-hostname "proxy"
+sudo hostnamectl set-hostname "${name}"
 
 # Create Teleport data dir
 sudo mkdir -p /var/lib/teleport
@@ -17,15 +17,13 @@ sudo tee /etc/teleport.yaml > /dev/null <<EOF
 version: v3
 teleport:
   auth_token: /tmp/token
-  nodename: proxy-peer
-  auth_server: ${auth_ip}:3021
+  auth_server: ${auth_ip}:3025
   data_dir: /var/lib/teleport
   log:
     output: stderr
     severity: INFO
     format:
       output: json
-  ca_pin: ""
 
 auth_service:
   enabled: "no"
@@ -34,12 +32,12 @@ proxy_service:
   enabled: "yes"
   web_listen_addr: 0.0.0.0:443
   public_addr: ${proxy_address}:443
-  https_keypairs: []
+  peer_listen_addr: 0.0.0.0:3021
+  peer_public_addr: $${PRIVATE_IP}:3021      # this could also be a name (e.g. teleport-proxy-host-1.example.com:3021) instead of an IP
   acme:
     enabled: yes
     email: ${user}
-  peer_listen_addr: 0.0.0.0:3021
-  peer_public_addr: $${PRIVATE_IP}:3021
+
 
 ssh_service:
   enabled: "yes"

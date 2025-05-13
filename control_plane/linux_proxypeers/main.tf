@@ -10,7 +10,7 @@ terraform {
   }
 }
 provider "aws" {
-  region = "us-east-2"
+  region = var.region
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
@@ -22,11 +22,11 @@ provider "aws" {
 ##################################################################################
 # DATA SOURCES
 ##################################################################################
-# used for creating subdomain on existing zone. Skip DNS steps if unneeded
+# used for creating subdomain on existing zone. Remove DNS steps if unneeded
 data "aws_route53_zone" "main" {
   name = var.parent_domain
 }
-data "http" "myip" { # remove when unneeded
+data "http" "myip" { # delete me
   url = "http://ipv4.icanhazip.com"
 }
 # data source for Amazon Linux 2023 (used due to aws cli/s3 workflow)
@@ -51,7 +51,7 @@ locals {
 ##################################################################################
 # networking
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16" # add variable for this
+  cidr_block           = var.cidr_block
   enable_dns_hostnames = true
   enable_dns_support   = true
 }
@@ -59,11 +59,11 @@ resource "aws_security_group" "main" {
   name        = "linux_teleport_network"
   description = "allows proxy peered setup for self hosted deployment managed by ${local.username}"
   vpc_id      = aws_vpc.main.id
-  ingress { # remove when unneeded
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
+  ingress { # delete me
+  from_port = 22
+  to_port = 22
+  protocol = "tcp"
+  cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
   }
   ingress { # multiplexed port for teleport; allows remote HTTPS access and agent joining 
     from_port   = 443
@@ -75,13 +75,13 @@ resource "aws_security_group" "main" {
     from_port   = 3021
     to_port     = 3021
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"] #this should be sourced from another resource 
+    cidr_blocks = [aws_vpc.main.cidr_block] 
   }
   ingress { # allows peers to dial auth
     from_port   = 3025
     to_port     = 3025
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
   egress {
     from_port   = 0
@@ -94,7 +94,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 }
 resource "aws_subnet" "main" {
-  cidr_block              = "10.0.0.0/24"
+  cidr_block              = var.subnet
   map_public_ip_on_launch = true
   vpc_id                  = aws_vpc.main.id
 }
@@ -149,8 +149,8 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # compute 
 resource "aws_instance" "main" {
   ami                    = data.aws_ami.main.id
-  instance_type          = "t3.small"   #add variable for this 
-  key_name               = var.key_name #remove when unneeded
+  instance_type          = var.ec2main_size 
+  key_name = "dlg-aws"
   vpc_security_group_ids = [aws_security_group.main.id]
   subnet_id              = aws_subnet.main.id
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
@@ -175,15 +175,17 @@ resource "aws_instance" "main" {
   }
 }
 resource "aws_instance" "proxy" {
+  count = var.proxy_count
   ami                    = data.aws_ami.main.id
-  instance_type          = "t3.small"   #add variable for this 
-  key_name               = var.key_name #remove when unneeded
+  instance_type          = var.ec2proxy_size
+  key_name = "dlg-aws"
   vpc_security_group_ids = [aws_security_group.main.id]
   subnet_id              = aws_subnet.main.id
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   user_data = templatefile("./config/userdata2", {
     auth_ip          = aws_instance.main.private_ip
     bucket           = aws_s3_bucket.main.bucket
+    name             = "proxypeer-${count.index}"
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     user             = var.user
@@ -197,8 +199,8 @@ resource "aws_instance" "proxy" {
     delete_on_termination = true
   }
   tags = {
-    Name = "${local.username}-selfhost-proxypeer"
-    Role = "proxy service"
+    Name = "${local.username}-selfhost-peer-${count.index}"
+    Role = "proxy service-${count.index}"
   }
 }
 # dns
@@ -220,26 +222,9 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
   records = [aws_instance.main.public_ip]
 }
 ##################################################################################
-# OUTPUTS (and their child resources/datasources)
+# OUTPUTS 
 ##################################################################################
-output "ips" { # remove when unneeded
-  value = {
-    main  = aws_instance.main.public_ip
-    proxy = aws_instance.proxy.public_ip
-  }
-}
-resource "null_resource" "sleep" {
-  depends_on = [aws_instance.proxy]
-  provisioner "local-exec" {
-    command = "sleep 15"
-  }
-}
-data "aws_s3_object" "user" {
-  depends_on = [null_resource.sleep]
-  bucket     = aws_s3_bucket.main.bucket
-  key        = "user"
-}
-output "login_details" {
-  value       = data.aws_s3_object.user.body
-  description = "contents of tctl users add being ran on the auth/proxy server"
+output "teleport_user_login_details" {
+  value       = "aws s3 cp s3://${aws_s3_bucket.main.bucket}/user -"
+  description = "provides command to run to retrieve login details"
 }
