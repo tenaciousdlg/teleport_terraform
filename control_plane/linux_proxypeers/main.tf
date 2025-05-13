@@ -32,13 +32,13 @@ data "http" "myip" { # remove when unneeded
 # data source for Amazon Linux 2023 (used due to aws cli/s3 workflow)
 data "aws_ami" "main" {
   most_recent = true
-  owners = ["amazon"]
+  owners      = ["amazon"]
   filter {
-    name = "name"
+    name   = "name"
     values = ["al2023-ami-*-x86_64"]
   }
   filter {
-    name = "virtualization-type"
+    name   = "virtualization-type"
     values = ["hvm"]
   }
 }
@@ -111,7 +111,7 @@ resource "aws_route_table_association" "main" {
 }
 # storage
 resource "aws_s3_bucket" "main" {
-  bucket = "${local.username}proxypeers"
+  bucket        = "${local.username}proxypeers"
   force_destroy = true
 }
 # iam
@@ -229,17 +229,17 @@ output "ips" { # remove when unneeded
   }
 }
 resource "null_resource" "sleep" {
-  depends_on = [ aws_instance.proxy ]
+  depends_on = [aws_instance.proxy]
   provisioner "local-exec" {
     command = "sleep 15"
   }
 }
 data "aws_s3_object" "user" {
-  depends_on = [ null_resource.sleep ]
-  bucket = aws_s3_bucket.main.bucket
-  key = "user"
+  depends_on = [null_resource.sleep]
+  bucket     = aws_s3_bucket.main.bucket
+  key        = "user"
 }
 output "login_details" {
-  value = data.aws_s3_object.user.body
+  value       = data.aws_s3_object.user.body
   description = "contents of tctl users add being ran on the auth/proxy server"
 }
