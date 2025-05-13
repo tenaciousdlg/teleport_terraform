@@ -26,9 +26,6 @@ provider "aws" {
 data "aws_route53_zone" "main" {
   name = var.parent_domain
 }
-data "http" "myip" { # delete me
-  url = "http://ipv4.icanhazip.com"
-}
 # data source for Amazon Linux 2023 (used due to aws cli/s3 workflow)
 data "aws_ami" "main" {
   most_recent = true
@@ -56,15 +53,9 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 }
 resource "aws_security_group" "main" {
-  name        = "linux_teleport_network"
+  name        = "${local.username}_linux_teleport_network"
   description = "allows proxy peered setup for self hosted deployment managed by ${local.username}"
   vpc_id      = aws_vpc.main.id
-  ingress { # delete me
-  from_port = 22
-  to_port = 22
-  protocol = "tcp"
-  cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
-  }
   ingress { # multiplexed port for teleport; allows remote HTTPS access and agent joining 
     from_port   = 443
     to_port     = 443
@@ -75,7 +66,7 @@ resource "aws_security_group" "main" {
     from_port   = 3021
     to_port     = 3021
     protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block] 
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
   ingress { # allows peers to dial auth
     from_port   = 3025
@@ -149,8 +140,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # compute 
 resource "aws_instance" "main" {
   ami                    = data.aws_ami.main.id
-  instance_type          = var.ec2main_size 
-  key_name = "dlg-aws"
+  instance_type          = var.ec2main_size
   vpc_security_group_ids = [aws_security_group.main.id]
   subnet_id              = aws_subnet.main.id
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
@@ -175,10 +165,9 @@ resource "aws_instance" "main" {
   }
 }
 resource "aws_instance" "proxy" {
-  count = var.proxy_count
+  count                  = var.proxy_count
   ami                    = data.aws_ami.main.id
   instance_type          = var.ec2proxy_size
-  key_name = "dlg-aws"
   vpc_security_group_ids = [aws_security_group.main.id]
   subnet_id              = aws_subnet.main.id
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name

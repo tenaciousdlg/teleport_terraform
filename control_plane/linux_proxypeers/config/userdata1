@@ -39,6 +39,7 @@ auth_service:
   license_file: /var/lib/teleport/license.pem
   authentication:
     type: local
+    second_factors: ["webauthn", "otp"]
   tunnel_strategy:
     type: proxy_peering
     agent_connection_count: 1
