@@ -1,0 +1,4 @@
+parent_domain    = ""
+proxy_address    = ""
+teleport_version = ""
+user             = ""
