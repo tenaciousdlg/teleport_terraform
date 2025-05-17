@@ -156,6 +156,8 @@ resource "aws_instance" "main" {
     http_tokens   = "required"
   }
   root_block_device {
+    volume_size           = 8
+    volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
   }
@@ -184,6 +186,8 @@ resource "aws_instance" "proxy" {
     http_tokens   = "required"
   }
   root_block_device {
+    volume_size           = 8
+    volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
   }
