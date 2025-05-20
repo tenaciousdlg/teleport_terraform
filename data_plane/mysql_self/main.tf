@@ -28,9 +28,8 @@ provider "aws" {
 provider "teleport" {
   addr = "${var.proxy_address}:443"
 }
-# TESTING
+# used for custom CA per https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/#step-24-create-a-certificatekey-pair
 provider "tls" {
-  
 }
 # used for random data with ids/tokens
 provider "random" {
@@ -51,9 +50,9 @@ data "aws_ami" "ubuntu" {
   }
   owners = ["099720109477"] # aws ec2 describe-images --image-ids ami-024e6efaf93d85776 --output json | jq '.Images[] | {Platform, OwnerId}'
 }
-# reference for troubleshooting ## REMOVE ME
-data "http" "myip" {
-  url = "http://ipv4.icanhazip.com"
+# data source for Teleport DB CA
+data "http" "teleport_db_ca_cert" {
+  url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
 }
 ##################################################################################
 # RESOURCES
@@ -142,12 +141,6 @@ resource "aws_security_group" "main" {
   vpc_id      = aws_vpc.main.id
   name        = "egress out"
   description = "allow only egress networking"
-  ingress { # TESTING
-    from_port = 22 # TESTING
-    to_port = 22
-    protocol = "tcp"
-    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
-  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -182,7 +175,6 @@ resource "aws_instance" "main" {
   associate_public_ip_address = true
   security_groups             = [aws_security_group.main.id]
   subnet_id                   = aws_subnet.main.id
-  key_name = "dlg-aws"
   user_data = templatefile("./config/userdata", {
     token      = teleport_provision_token.db.metadata.name
     domain     = var.proxy_address
@@ -190,6 +182,7 @@ resource "aws_instance" "main" {
     ca         = tls_self_signed_cert.ca_cert.cert_pem
     cert       = tls_locally_signed_cert.server_cert.cert_pem
     key        = tls_private_key.server_key.private_key_pem
+    tele_ca    = data.http.teleport_db_ca_cert.response_body
   })
   metadata_options {
     http_endpoint = "enabled"

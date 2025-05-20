@@ -62,6 +62,7 @@ EOF
 # cert installation 
 sudo mkdir -p /etc/mysql/ssl
 sudo echo "${ca}" > /etc/mysql/ssl/server.cas
+sudo echo "${tele_ca}" >> /etc/mysql/ssl/server.cas
 sudo echo "${cert}" > /etc/mysql/ssl/server.crt
 sudo echo "${key}" > /etc/mysql/ssl/server.key
 # mysql config 
