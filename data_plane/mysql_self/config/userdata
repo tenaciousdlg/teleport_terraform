@@ -31,19 +31,14 @@ teleport:
   auth_token: "${token}"
   log:
     output: stderr
-    severity: INFO
+    severity: DEBUG
     format:
       output: text
 db_service:
   enabled: true
-  databases:
-  - name: "dev-mysql"
-    protocol: "mysql"
-    uri: "localhost:3306"
-    tls:
-      ca_cert_file: "/etc/mysql/ssl/server.cas"
-    static_labels:
-      "tier": "dev"
+  resources:
+   - labels:
+       "tier": "dev"
 auth_service:
   enabled: "no"
 ssh_service:

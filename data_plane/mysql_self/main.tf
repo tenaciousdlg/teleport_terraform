@@ -117,7 +117,7 @@ resource "tls_locally_signed_cert" "server_cert" {
   ]
 }
 # provision token for db and ssh services
-resource "teleport_provision_token" "db" {
+resource "teleport_provision_token" "db" { # https://goteleport.com/docs/reference/terraform-provider/resources/provision_token/
   version = "v2"
   spec = {
     roles = [
@@ -128,6 +128,26 @@ resource "teleport_provision_token" "db" {
   }
   metadata = {
     expires = timeadd(timestamp(), "1h")
+  }
+}
+# provision db for Teleport to detect
+# https://goteleport.com/docs/reference/terraform-provider/resources/database/
+resource "teleport_database" "mysql" {
+  version = "v3"
+  metadata = {
+    name        = "test-mysql"
+    description = "teleport-managed MySQL for dev"
+    labels = {
+      tier                   = "dev"
+      "teleport.dev/origin"  = "dynamic"
+    }
+  }
+  spec = {
+    protocol = "mysql"
+    uri      = "localhost:3306"
+    tls = {
+      ca_cert = "${tls_self_signed_cert.ca_cert.cert_pem}\n${data.http.teleport_db_ca_cert.response_body}"
+    }
   }
 }
 # aws networking 
