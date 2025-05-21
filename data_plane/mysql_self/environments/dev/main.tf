@@ -1,31 +1,22 @@
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
+module "mysql_instance" {
+  source              = "../../modules/teleport_mysql_instance"
+  env                 = var.env
+  user                = var.user
+  proxy_address       = var.proxy_address
+  teleport_version    = var.teleport_version
+  teleport_db_ca      = data.http.teleport_db_ca_cert.response_body
+  ami_id              = data.aws_ami.ubuntu.id
+  instance_type       = "t3.small"
+  subnet_id           = var.subnet_id
+  security_group_ids  = [var.security_group_id]
 }
 
-data "http" "teleport_db_ca_cert" {
-  url = "https://proxy.teleportdemo.com/webapi/auth/export?type=db-client"
-}
-
-module "mysql_dev" {
-  source = "../../modules/teleport_mysql"
-
-  env                = "dev"
-  user               = "internal-dev"
-  proxy_address      = "proxy.teleportdemo.com"
-  teleport_version   = "16.0.0"
-  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
-  mysql_hostname     = "mysql.dev.internal"
-  ami_id             = data.aws_ami.ubuntu.id
-  instance_type      = "t3.small"
-  subnet_id          = "subnet-xxxxxxxx"
-  security_group_ids = ["sg-xxxxxxxx"]
+module "mysql_registration" {
+  source          = "../../modules/teleport_mysql_registration"
+  env             = var.env
+  uri             = "localhost:3306"
+  ca_cert_chain   = "${module.mysql_instance.ca_cert}\n${module.mysql_instance.teleport_db_ca}"
+  labels          = {
+    tier = "db"
+  }
 }
