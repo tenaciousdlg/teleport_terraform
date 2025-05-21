@@ -65,18 +65,18 @@ resource "random_string" "uuid" {
 # TESTING
 resource "tls_private_key" "ca_key" {
   algorithm = "RSA"
-  rsa_bits = 4096
+  rsa_bits  = 4096
 }
 resource "tls_self_signed_cert" "ca_cert" {
   private_key_pem = tls_private_key.ca_key.private_key_pem
 
   subject {
-    common_name = "example"
+    common_name  = "example"
     organization = "example"
   }
 
   validity_period_hours = 87600 # 10 years
-  is_ca_certificate = true
+  is_ca_certificate     = true
   allowed_uses = [
     "cert_signing",
     "key_encipherment",
@@ -87,13 +87,13 @@ resource "tls_self_signed_cert" "ca_cert" {
 }
 resource "tls_private_key" "server_key" {
   algorithm = "RSA"
-  rsa_bits = 2048
+  rsa_bits  = 2048
 }
 resource "tls_cert_request" "server_csr" {
   private_key_pem = tls_private_key.server_key.private_key_pem
 
   subject {
-    common_name = "mysql.example.internal" #mysql server hostname
+    common_name  = "mysql.example.internal" #mysql server hostname
     organization = "example org"
   }
 
@@ -104,9 +104,9 @@ resource "tls_cert_request" "server_csr" {
   ]
 }
 resource "tls_locally_signed_cert" "server_cert" {
-  cert_request_pem = tls_cert_request.server_csr.cert_request_pem
+  cert_request_pem   = tls_cert_request.server_csr.cert_request_pem
   ca_private_key_pem = tls_private_key.ca_key.private_key_pem
-  ca_cert_pem = tls_self_signed_cert.ca_cert.cert_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_cert.cert_pem
 
   validity_period_hours = 8760 # 1 year
   allowed_uses = [
@@ -138,8 +138,8 @@ resource "teleport_database" "mysql" {
     name        = "test-mysql"
     description = "teleport-managed MySQL for dev"
     labels = {
-      tier                   = "dev"
-      "teleport.dev/origin"  = "dynamic"
+      tier                  = "dev"
+      "teleport.dev/origin" = "dynamic"
     }
   }
   spec = {
@@ -196,13 +196,13 @@ resource "aws_instance" "main" {
   security_groups             = [aws_security_group.main.id]
   subnet_id                   = aws_subnet.main.id
   user_data = templatefile("./config/userdata", {
-    token      = teleport_provision_token.db.metadata.name
-    domain     = var.proxy_address
-    major      = var.teleport_version
-    ca         = tls_self_signed_cert.ca_cert.cert_pem
-    cert       = tls_locally_signed_cert.server_cert.cert_pem
-    key        = tls_private_key.server_key.private_key_pem
-    tele_ca    = data.http.teleport_db_ca_cert.response_body
+    token   = teleport_provision_token.db.metadata.name
+    domain  = var.proxy_address
+    major   = var.teleport_version
+    ca      = tls_self_signed_cert.ca_cert.cert_pem
+    cert    = tls_locally_signed_cert.server_cert.cert_pem
+    key     = tls_private_key.server_key.private_key_pem
+    tele_ca = data.http.teleport_db_ca_cert.response_body
   })
   metadata_options {
     http_endpoint = "enabled"
