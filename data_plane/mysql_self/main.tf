@@ -138,15 +138,15 @@ resource "teleport_database" "mysql" {
     name        = "test-mysql"
     description = "teleport-managed MySQL for dev"
     labels = {
-      tier                  = "dev"
-      "teleport.dev/origin" = "dynamic"
+      tier                   = "dev"
+      "teleport.dev/origin"  = "dynamic"
     }
   }
   spec = {
     protocol = "mysql"
     uri      = "localhost:3306"
     tls = {
-      ca_cert = "${tls_self_signed_cert.ca_cert.cert_pem}\n${data.http.teleport_db_ca_cert.response_body}"
+      ca_cert = "${tls_self_signed_cert.ca_cert.cert_pem}"
     }
   }
 }
