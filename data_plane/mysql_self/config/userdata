@@ -70,11 +70,11 @@ ssl-key=/etc/mysql/ssl/server.key
 
 log_error=/var/log/mysql/mysqld.log
 EOF
-sudo mysql -u root -e "CREATE USER 'alice'@'%' REQUIRE SUBJECT '/CN=alice';"
-sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'alice'@'%';"
-sudo mysql -u root -e "CREATE USER 'bob'@'%' REQUIRE SUBJECT '/CN=bob';"
-sudo mysql -u root -e "GRANT SELECT ON *.* TO 'bob'@`%`;"
-sudo mysql -u root -e "GRANT SHOW VIEW ON *.* TO 'bob'@`%`"
+sudo mysql -u root -e "CREATE USER 'writer'@'%' REQUIRE SUBJECT '/CN=writer';"
+sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'writer'@'%';"
+sudo mysql -u root -e "CREATE USER 'reader'@'%' REQUIRE SUBJECT '/CN=reader';"
+sudo mysql -u root -e "GRANT SELECT ON *.* TO 'reader'@`%`;"
+sudo mysql -u root -e "GRANT SHOW VIEW ON *.* TO 'reader'@`%`"
 sudo mysql -u root -e "FLUSH PRIVILEGES;"
 sudo systemctl restart mariadb
 systemctl enable teleport

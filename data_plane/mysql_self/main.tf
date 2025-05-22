@@ -48,7 +48,7 @@ data "aws_ami" "ubuntu" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-  owners = ["099720109477"] # aws ec2 describe-images --image-ids ami-024e6efaf93d85776 --output json | jq '.Images[] | {Platform, OwnerId}'
+  owners = ["amazon"] 
 }
 # data source for Teleport DB CA
 data "http" "teleport_db_ca_cert" {
