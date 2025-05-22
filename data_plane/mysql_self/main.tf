@@ -209,7 +209,10 @@ resource "aws_instance" "main" {
     http_tokens   = "required"
   }
   root_block_device {
-    encrypted = true
+    volume_size           = 8
+    volume_type           = "gp3"
+    encrypted             = true
+    delete_on_termination = true
   }
   # Prevents resource being recreated for minor versions of AMI 
   lifecycle {
