@@ -54,8 +54,8 @@ spec:
     - dbadmin
     db_users:
     - '{{internal.db_users}}'
-    - '*'
     - postgres
+    - reader
     desktop_groups:
     - Administrators
     impersonate:
@@ -141,8 +141,9 @@ spec:
     - dbadmin
     db_users:
     - '{{internal.db_users}}'
-    - '*'
     - postgres
+    - reader
+    - writer
     desktop_groups:
     - Administrators
     impersonate:

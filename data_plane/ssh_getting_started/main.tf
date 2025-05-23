@@ -26,10 +26,6 @@ provider "teleport" {
   addr = "${var.proxy_address}:443"
 }
 
-data "http" "teleport_db_ca_cert" {
-  url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
-}
-
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["amazon"]
@@ -43,30 +39,19 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-module "mysql_instance" {
-  source = "../../modules/teleport_mysql_instance"
+module "ssh_nodes" {
+  source = "../../modules/ssh_node"
 
   env              = var.env
   user             = var.user
   proxy_address    = var.proxy_address
   teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
 
+  agent_count   = 3
   ami_id        = data.aws_ami.ubuntu.id
-  instance_type = "t3.small"
+  instance_type = "t3.micro"
 
   create_network = true
   cidr_vpc       = "10.0.0.0/16"
   cidr_subnet    = "10.0.1.0/24"
-}
-
-module "mysql_registration" {
-  source = "../../modules/teleport_mysql_registration"
-
-  env     = var.env
-  uri     = "localhost:3306"
-  ca_cert = module.mysql_instance.ca_cert
-  labels = {
-    tier = var.env
-  }
 }

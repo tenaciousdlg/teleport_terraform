@@ -1,10 +1,6 @@
 variable "env" {
   description = "Environment name"
-}
-
-variable "region" {
-  description = "AWS region to deploy resources"
-  default     = "us-east-2"
+  default     = "dev"
 }
 
 variable "user" {
@@ -19,5 +15,10 @@ variable "proxy_address" {
 
 variable "teleport_version" {
   description = "Teleport version to install"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "AWS region to deploy into"
   type        = string
 }

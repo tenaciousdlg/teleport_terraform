@@ -1,0 +1,4 @@
+user             = "dlg"
+proxy_address    = "teleport.example.com"
+teleport_version = "17.4.8"
+aws_region       = "us-east-2"

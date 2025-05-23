@@ -1,8 +1,8 @@
 #!/bin/bash
-sudo hostnamectl set-hostname ${hostname}
+sudo hostnamectl set-hostname ${host}
 curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
+echo "${token}" > /tmp/token
 
-echo ${token} > /tmp/token
 cat<<EOF >/etc/teleport.yaml
 version: v3
 teleport:
@@ -17,15 +17,18 @@ teleport:
 ssh_service:
   enabled: true
   labels:
-    env: ${hostname}
+    tier: ${env}
     os: linux
   commands:
     - name: "hostname"
       command: ["/bin/hostname"]
       period: "1m0s"
-    - name: "uptime"
-      command: ["uptime"]
-      period: "1m0s"
+    - name: "load_average"
+      command: ["/bin/sh", "-c", "cut -d' ' -f1 /proc/loadavg"]
+      period: "30s"
+    - name: "disk_used"
+      command: ["/bin/sh", "-c", "df -hTP / | awk '{print \$6}' | egrep '^[0-9][0-9]'"]
+      period: "2m0s"
 proxy_service:
   enabled: false
 auth_service:
