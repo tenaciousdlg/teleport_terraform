@@ -8,8 +8,8 @@ variable "name" {
 variable "uri" {
   description = "Database connection URI (e.g., localhost:3306)"
 }
-variable "ca_cert_chain" {
-  description = "Combined PEM-formatted CA certs for the database"
+variable "ca_cert" {
+  description = "Terraform managed Self Signed PEM-formatted CA certs for the database"
 }
 variable "labels" {
   description = "Map of labels to apply to the Teleport database resource"

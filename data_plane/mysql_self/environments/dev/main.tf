@@ -65,7 +65,7 @@ module "mysql_registration" {
 
   env           = var.env
   uri           = "localhost:3306"
-  ca_cert_chain = module.mysql_instance.ca_cert
+  ca_cert = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
   }

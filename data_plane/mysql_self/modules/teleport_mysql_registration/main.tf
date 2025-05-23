@@ -11,7 +11,7 @@ resource "teleport_database" "mysql" {
   version = "v3"
   metadata = {
     name        = "${var.env}-${var.name}"
-    description = "Teleport-managed MySQL for ${var.env}"
+    description = "Terraform-managed MySQL for ${var.env}"
     labels = merge(var.labels, {
       "teleport.dev/origin" = "dynamic"
     })
@@ -20,7 +20,7 @@ resource "teleport_database" "mysql" {
     protocol = "mysql"
     uri      = var.uri
     tls = {
-      ca_cert = var.ca_cert_chain
+      ca_cert = var.ca_cert
     }
   }
 }

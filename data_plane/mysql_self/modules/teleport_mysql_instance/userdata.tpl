@@ -11,7 +11,7 @@ sudo apt install -y mariadb-server mariadb-client jq
 sudo systemctl enable mariadb
 sudo systemctl start mariadb
 
-# Secure installation (default answers piped in)
+# mysql secure installation (default answers piped in)
 sudo mysql_secure_installation <<EOF
 
 y
@@ -41,14 +41,13 @@ db_service:
   enabled: true
   resources:
     - labels:
-        match:
-          - tier=${env}
+        "tier": "${env}"
 auth_service:
   enabled: "no"
 ssh_service:
   enabled: "yes"
   labels:
-    tier: ${env}
+    "tier": "${env}"
 proxy_service:
   enabled: "no"
 app_service:

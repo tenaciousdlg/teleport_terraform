@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/tls"
       version = ">= 4.0"
     }
+    random = {
+      source = "hashicorp/random"
+      version = ">= 3.0"
+    }
   }
 }
 
@@ -44,6 +48,26 @@ resource "aws_security_group" "main" {
   }
 }
 
+resource "aws_internet_gateway" "main" {
+  count       = var.create_network ? 1 : 0
+  vpc_id      = aws_vpc.main[0].id
+}
+
+resource "aws_route_table" "main" {
+    count       = var.create_network ? 1 : 0
+  vpc_id      = aws_vpc.main[0].id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main[0].id
+  }
+}
+
+resource "aws_route_table_association" "main" {
+    count       = var.create_network ? 1 : 0
+    subnet_id = aws_subnet.main[0].id
+    route_table_id = aws_route_table.main[0].id
+}
+
 resource "tls_private_key" "ca_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
@@ -55,9 +79,9 @@ resource "tls_self_signed_cert" "ca_cert" {
     common_name  = "example"
     organization = "example"
   }
-  validity_period_hours = 87600
+  validity_period_hours = 87600 #10 years
   is_ca_certificate     = true
-  allowed_uses          = ["cert_signing", "client_auth", "server_auth"]
+  allowed_uses          = ["cert_signing", "client_auth", "server_auth","key_encipherment", "digital_signature"]
 }
 
 resource "tls_private_key" "server_key" {
@@ -82,11 +106,17 @@ resource "tls_locally_signed_cert" "server_cert" {
   allowed_uses          = ["digital_signature", "key_encipherment", "server_auth", "client_auth"]
 }
 
+resource "random_string" "uuid" {
+  length  = 20
+  special = false
+}
+
+# https://goteleport.com/docs/reference/terraform-provider/resources/provision_token/
 resource "teleport_provision_token" "db" {
   version = "v2"
   spec = {
     roles = ["Db", "Node"]
-    name  = var.env
+    name = random_string.uuid.result
   }
   metadata = {
     expires = timeadd(timestamp(), "1h")
