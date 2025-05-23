@@ -61,7 +61,7 @@ module "mysql_registration" {
   source        = "../../modules/registration"
   resource_type = "database"
   name          = "mysql-${var.env}"
-  description   = "MySQL database in ${var.env}"
+  description   = "MySQL database in ${var.env} full deployment"
   protocol      = "mysql"
   uri           = "localhost:3306"
   ca_cert_chain = module.mysql_instance.ca_cert
