@@ -1,6 +1,6 @@
 # Teleport MySQL Module
 
-This repository provides reusable Terraform modules to deploy and register a MySQL database with Teleport. It provisions a self-hosted MySQL instance on AWS EC2, configures Teleport's Database Service dynamically, and registers the database using the Teleport Terraform provider.
+This repository provides reusable Terraform modules to deploy and register a MySQL database with Teleport. It is based on the [Self Hosted MySQL Teleport guide](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/). It provisions a self-hosted MySQL instance on AWS EC2, configures Teleport's Database Service dynamically, and registers the database using the Teleport Terraform provider.
 
 ---
 
@@ -29,11 +29,6 @@ Provision and configure:
 | `cidr_subnet`       | (Optional) CIDR block for subnet if `create_network = true` (default: `10.0.1.0/24`) |
 | `subnet_id`         | (Optional) Use an existing subnet ID instead of creating one   |
 | `security_group_ids`| (Optional) Use existing security groups instead of creating one |
-
-#### Outputs
-| Name              | Description                         |         | Internal CA cert used for MySQL     |
-| `teleport_db_ca`  | Teleport DB CA (as passed in)       |
-| `instance_ip`     | Public IP of the MySQL EC2 instance |
 
 #### Structure 
 
@@ -72,60 +67,6 @@ Register the database with Teleport using `teleport_database` resource.
 | `ca_cert_chain`  | Combined PEM for Teleport to verify MySQL TLS        |
 | `labels`         | Custom labels applied to the DB resource             |
 
-#### Outputs
-| Name     | Description             |
-|----------|-------------------------|
-| `db_name`| Name of the DB resource |
-
----
-
-## 🚀 Usage Example
-In `environments/dev/main.tf` the following values are configured:
-
-```hcl
-module "mysql_instance" {
-  source              = "../../modules/teleport_mysql_instance"
-  env                 = var.env
-  user                = var.user
-  proxy_address       = var.proxy_address
-  teleport_version    = var.teleport_version
-  teleport_db_ca      = data.http.teleport_db_ca_cert.response_body
-  ami_id              = data.aws_ami.ubuntu.id
-  instance_type       = "t3.small"
-
-  # Optional: use internal networking
-  create_network      = true
-  cidr_vpc            = "10.0.0.0/16"
-  cidr_subnet         = "10.0.1.0/24"
-}
-}
-
-module "mysql_registration" {
-  source          = "../../modules/teleport_mysql_registration"
-  env             = var.env
-  uri             = "localhost:3306"
-  ca_cert_chain   = module.mysql_instance.ca_cert
-  labels = {
-    tier = var.env
-  }
-}
-```
-
-Navigate into the `enviornments/dev` directory and initialize Terraform.
-
-```hcl
-cd environments/dev
-terraform init
-```
-
-
----
-
-## 🔐 Notes
-- `teleport.yaml` on the EC2 instance uses dynamic discovery via `resources.labels.match` in `/etc/teleport.yaml`.
-- TLS certs are generated and provisioned via Terraform.
-- User `writer` has full access; user `reader` has limited view/read permissions via cert CN. These should be referenced in a Teleport Role. 
-
 ---
 
 ## 📄 Requirements
@@ -135,17 +76,68 @@ terraform init
 
 ---
 
+## 🚀 Usage Example
+
+Authenticate to AWS CLI and a Teleport cluster. 
+
+For AWS auth you should be able to run the following command.
+
+```hcl
+aws sts get-caller-identity --query "UserId" --output text
+```
+
+Login to Teleport cluster and generate temporary Terraform bot credentials
+
+```hcl
+tsh login --proxy=example.teleportdemo.com:443 example.teleportdemo.com --auth=sso
+eval $(tctl terraform env)
+```
+
+Navigate into the `enviornments/dev` directory and initialize Terraform.
+
+```hcl
+cd environments/dev
+terraform init
+```
+
+Review what will be created with plan then apply the configuration
+
+```hcl
+terraform plan
+terraform apply
+```
+
+---
+
 ## 📁 Environments
 Use separate `terraform.tfvars` and `main.tf` under `environments/<env>` for each deployment:
 
-```
+```hcl
 environments/
 ├── dev/
 │   ├── main.tf
 │   ├── terraform.tfvars
 │   └── variables.tf
+├── staging/
+│   └── ...
 ├── prod/
 │   └── ...
+```
+
+---
+
+## 🔐 Notes
+- `teleport.yaml` on the EC2 instance uses dynamic discovery via `resources.labels.match` in `/etc/teleport.yaml`.
+- TLS certs are generated and provisioned via Terraform.
+- DB user `writer` has full access; user `reader` has limited view/read permissions via cert CN. These should be referenced in a Teleport Role. 
+
+Example Snippet
+```hcl
+spec:
+  allow:
+    db_users:
+    - reader
+    - writer
 ```
 
 ---
