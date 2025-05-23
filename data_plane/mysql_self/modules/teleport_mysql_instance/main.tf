@@ -1,3 +1,28 @@
+resource "aws_vpc" "main" {
+  count                = var.create_network ? 1 : 0
+  cidr_block           = var.cidr_vpc
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+}
+
+resource "aws_subnet" "main" {
+  count      = var.create_network ? 1 : 0
+  vpc_id     = aws_vpc.main[0].id
+  cidr_block = var.cidr_subnet
+}
+
+resource "aws_security_group" "main" {
+  count       = var.create_network ? 1 : 0
+  vpc_id      = aws_vpc.main[0].id
+  description = "Allow all egress"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "tls_private_key" "ca_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
@@ -50,9 +75,9 @@ resource "teleport_provision_token" "db" {
 resource "aws_instance" "mysql" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
+  subnet_id                   = var.subnet_id != null ? var.subnet_id : aws_subnet.main[0].id
   associate_public_ip_address = true
-  security_groups             = var.security_group_ids
+  security_groups             = var.security_group_ids != null ? var.security_group_ids : [aws_security_group.main[0].id]
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     token    = teleport_provision_token.db.metadata.name
@@ -71,10 +96,13 @@ resource "aws_instance" "mysql" {
   }
 
   root_block_device {
-    encrypted = true
+    volume_size           = 8
+    volume_type           = "gp3"
+    encrypted             = true
+    delete_on_termination = true
   }
 
   tags = {
-    Name = "${var.env}-mysql"
+    Name = "${var.user}-${var.env}-mysql"
   }
 }

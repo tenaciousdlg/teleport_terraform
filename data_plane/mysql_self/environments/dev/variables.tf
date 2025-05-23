@@ -1,19 +1,24 @@
-variable "env" { 
-    default = "dev" 
-    description = "Environment name (e.g., dev, prod)"
+variable "env" {
+  description = "Environment name"
+  default     = "dev"
 }
+
+variable "region" {
+  description = "AWS region to deploy resources"
+  default = "us-east-2"
+}
+
 variable "user" {
-  description = "Username or owner of the environment"
+  description = "Tag to identify the creator"
+  type        = string
 }
+
 variable "proxy_address" {
-  description = "Teleport Proxy host address (without https:// prefix)"
+  description = "Teleport Proxy address (without protocol)"
+  type        = string
 }
+
 variable "teleport_version" {
-  description = "Teleport version to install on EC2 instance"
-}
-variable "subnet_id" {
-  description = "AWS subnet ID for EC2 instance placement"
-}
-variable "security_group_id" {
-  description = "AWS security group ID for the instance"
+  description = "Teleport version to install"
+  type        = string
 }

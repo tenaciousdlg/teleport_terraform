@@ -1,18 +1,48 @@
+provider "aws" {
+  region = var.region
+}
+
+provider "teleport" {
+  addr = "${var.proxy_address}:443"
+}
+
+data "http" "teleport_db_ca_cert" {
+  url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
+}
+
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 module "mysql_instance" {
   source              = "../../modules/teleport_mysql_instance"
+
   env                 = var.env
   user                = var.user
   proxy_address       = var.proxy_address
   teleport_version    = var.teleport_version
   teleport_db_ca      = data.http.teleport_db_ca_cert.response_body
+
   ami_id              = data.aws_ami.ubuntu.id
   instance_type       = "t3.small"
-  subnet_id           = var.subnet_id
-  security_group_ids  = [var.security_group_id]
+
+  create_network      = true
+  cidr_vpc            = "10.0.0.0/16"
+  cidr_subnet         = "10.0.1.0/24"
 }
 
 module "mysql_registration" {
   source          = "../../modules/teleport_mysql_registration"
+
   env             = var.env
   uri             = "localhost:3306"
   ca_cert_chain   = module.mysql_instance.ca_cert
