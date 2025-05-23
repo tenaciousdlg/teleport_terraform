@@ -13,7 +13,7 @@ terraform {
       version = ">= 4.0"
     }
     random = {
-      source = "hashicorp/random"
+      source  = "hashicorp/random"
       version = ">= 3.0"
     }
   }
@@ -49,13 +49,13 @@ resource "aws_security_group" "main" {
 }
 
 resource "aws_internet_gateway" "main" {
-  count       = var.create_network ? 1 : 0
-  vpc_id      = aws_vpc.main[0].id
+  count  = var.create_network ? 1 : 0
+  vpc_id = aws_vpc.main[0].id
 }
 
 resource "aws_route_table" "main" {
-    count       = var.create_network ? 1 : 0
-  vpc_id      = aws_vpc.main[0].id
+  count  = var.create_network ? 1 : 0
+  vpc_id = aws_vpc.main[0].id
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main[0].id
@@ -63,9 +63,9 @@ resource "aws_route_table" "main" {
 }
 
 resource "aws_route_table_association" "main" {
-    count       = var.create_network ? 1 : 0
-    subnet_id = aws_subnet.main[0].id
-    route_table_id = aws_route_table.main[0].id
+  count          = var.create_network ? 1 : 0
+  subnet_id      = aws_subnet.main[0].id
+  route_table_id = aws_route_table.main[0].id
 }
 
 resource "tls_private_key" "ca_key" {
@@ -81,7 +81,7 @@ resource "tls_self_signed_cert" "ca_cert" {
   }
   validity_period_hours = 87600 #10 years
   is_ca_certificate     = true
-  allowed_uses          = ["cert_signing", "client_auth", "server_auth","key_encipherment", "digital_signature"]
+  allowed_uses          = ["cert_signing", "client_auth", "server_auth", "key_encipherment", "digital_signature"]
 }
 
 resource "tls_private_key" "server_key" {
@@ -116,7 +116,7 @@ resource "teleport_provision_token" "db" {
   version = "v2"
   spec = {
     roles = ["Db", "Node"]
-    name = random_string.uuid.result
+    name  = random_string.uuid.result
   }
   metadata = {
     expires = timeadd(timestamp(), "1h")

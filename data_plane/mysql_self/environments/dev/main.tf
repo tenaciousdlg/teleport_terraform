@@ -63,8 +63,8 @@ module "mysql_instance" {
 module "mysql_registration" {
   source = "../../modules/teleport_mysql_registration"
 
-  env           = var.env
-  uri           = "localhost:3306"
+  env     = var.env
+  uri     = "localhost:3306"
   ca_cert = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
