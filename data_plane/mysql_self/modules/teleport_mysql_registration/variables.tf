@@ -1,5 +1,17 @@
-variable "env" {}
-variable "name" { default = "mysql" }
-variable "uri" {}
-variable "ca_cert_chain" {}
-variable "labels" { type = map(string) }
+variable "env" {
+  description = "Environment name (e.g., dev, prod)"
+}
+variable "name" {
+  description = "Logical name of the database for resource naming"
+  default     = "mysql"
+}
+variable "uri" {
+  description = "Database connection URI (e.g., localhost:3306)"
+}
+variable "ca_cert_chain" {
+  description = "Combined PEM-formatted CA certs for the database"
+}
+variable "labels" {
+  description = "Map of labels to apply to the Teleport database resource"
+  type        = map(string)
+}

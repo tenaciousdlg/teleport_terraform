@@ -2,7 +2,7 @@
 set -e
 
 # Set hostname
-sudo hostnamectl set-hostname "mysql"
+sudo hostnamectl set-hostname "${env}-mysql"
 
 # System prep
 sudo apt update && sudo apt upgrade -y
@@ -42,13 +42,13 @@ db_service:
   resources:
     - labels:
         match:
-          - tier=db
+          - tier=${env}
 auth_service:
   enabled: "no"
 ssh_service:
   enabled: "yes"
   labels:
-    tier: db
+    tier: ${env}
 proxy_service:
   enabled: "no"
 app_service:
@@ -73,10 +73,10 @@ log_error=/var/log/mysql/mysqld.log
 EOF
 
 # Create cert-authenticated users
-sudo mysql -u root -e "CREATE USER 'alice'@'%' REQUIRE SUBJECT '/CN=alice';"
-sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'alice'@'%';"
-sudo mysql -u root -e "CREATE USER 'bob'@'%' REQUIRE SUBJECT '/CN=bob';"
-sudo mysql -u root -e "GRANT SELECT, SHOW VIEW ON *.* TO 'bob'@'%';"
+sudo mysql -u root -e "CREATE USER 'writer'@'%' REQUIRE SUBJECT '/CN=writer';"
+sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'writer'@'%';"
+sudo mysql -u root -e "CREATE USER 'reader'@'%' REQUIRE SUBJECT '/CN=reader';"
+sudo mysql -u root -e "GRANT SELECT, SHOW VIEW ON *.* TO 'reader'@'%';"
 sudo mysql -u root -e "FLUSH PRIVILEGES;"
 
 # Restart services

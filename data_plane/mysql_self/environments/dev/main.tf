@@ -15,8 +15,8 @@ module "mysql_registration" {
   source          = "../../modules/teleport_mysql_registration"
   env             = var.env
   uri             = "localhost:3306"
-  ca_cert_chain   = "${module.mysql_instance.ca_cert}\n${module.mysql_instance.teleport_db_ca}"
-  labels          = {
-    tier = "db"
+  ca_cert_chain   = module.mysql_instance.ca_cert
+  labels = {
+    tier = var.env
   }
 }

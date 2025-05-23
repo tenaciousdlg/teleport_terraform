@@ -1,10 +1,32 @@
-variable "env" {}
-variable "user" {}
-variable "proxy_address" {}
-variable "teleport_version" {}
-variable "teleport_db_ca" {}
-variable "mysql_hostname" { default = "mysql.example.internal" }
-variable "ami_id" {}
-variable "instance_type" {}
-variable "subnet_id" {}
-variable "security_group_ids" { type = list(string) }
+variable "env" {
+  description = "Environment name (e.g., dev, prod)"
+}
+variable "user" {
+  description = "Tag value for resource creator"
+}
+variable "proxy_address" {
+  description = "Teleport Proxy host (e.g., proxy.example.com)"
+}
+variable "teleport_version" {
+  description = "Teleport version to install (e.g., 16.0.0)"
+}
+variable "teleport_db_ca" {
+  description = "Teleport DB CA certificate (retrieved from webapi export)"
+}
+variable "mysql_hostname" {
+  description = "Hostname for MySQL server (used in TLS cert)"
+  default     = "mysql.example.internal"
+}
+variable "ami_id" {
+  description = "AMI ID for the EC2 instance"
+}
+variable "instance_type" {
+  description = "EC2 instance type (e.g., t3.small)"
+}
+variable "subnet_id" {
+  description = "Subnet ID for EC2 instance"
+}
+variable "security_group_ids" {
+  description = "List of security group IDs for the instance"
+  type        = list(string)
+}

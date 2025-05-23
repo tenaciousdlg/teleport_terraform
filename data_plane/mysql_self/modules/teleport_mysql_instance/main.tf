@@ -55,13 +55,14 @@ resource "aws_instance" "mysql" {
   security_groups             = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    token   = teleport_provision_token.db.metadata.name
-    domain  = var.proxy_address
-    major   = var.teleport_version
-    ca      = tls_self_signed_cert.ca_cert.cert_pem
-    cert    = tls_locally_signed_cert.server_cert.cert_pem
-    key     = tls_private_key.server_key.private_key_pem
-    tele_ca = var.teleport_db_ca
+    token    = teleport_provision_token.db.metadata.name
+    domain   = var.proxy_address
+    major    = var.teleport_version
+    ca       = tls_self_signed_cert.ca_cert.cert_pem
+    cert     = tls_locally_signed_cert.server_cert.cert_pem
+    key      = tls_private_key.server_key.private_key_pem
+    tele_ca  = var.teleport_db_ca
+    env      = var.env
   })
 
   metadata_options {
