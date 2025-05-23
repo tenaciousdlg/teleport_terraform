@@ -80,7 +80,7 @@ Register the database with Teleport using `teleport_database` resource.
 ---
 
 ## 🚀 Usage Example
-In `environments/dev/main.tf`:
+In `environments/dev/main.tf` the following values are configured:
 
 ```hcl
 module "mysql_instance" {
@@ -111,18 +111,26 @@ module "mysql_registration" {
 }
 ```
 
+Navigate into the `enviornments/dev` directory and initialize Terraform.
+
+```hcl
+cd environments/dev
+terraform init
+```
+
+
 ---
 
 ## 🔐 Notes
-- `teleport.yaml` on the EC2 instance uses dynamic discovery via `resources.labels.match`.
+- `teleport.yaml` on the EC2 instance uses dynamic discovery via `resources.labels.match` in `/etc/teleport.yaml`.
 - TLS certs are generated and provisioned via Terraform.
-- User `alice` has full access; user `bob` has limited view/read permissions via cert CN.
+- User `writer` has full access; user `reader` has limited view/read permissions via cert CN. These should be referenced in a Teleport Role. 
 
 ---
 
 ## 📄 Requirements
 - Terraform ≥ 1.3
-- Teleport Enterprise ≥ 14.0 (for dynamic DB registration)
+- Teleport Enterprise ≥ 17.0 
 - AWS CLI + credentials setup for Terraform to access
 
 ---

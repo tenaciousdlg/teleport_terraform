@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    teleport = {
+      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      version = "~> 17.0"
+    }
+  }
+}
+
 resource "teleport_database" "mysql" {
   version = "v3"
   metadata = {

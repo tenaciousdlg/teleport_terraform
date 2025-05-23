@@ -1,3 +1,24 @@
+terraform {
+  required_providers {
+    teleport = {
+      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      version = "~> 17.0"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.39"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = ">= 4.0"
+    }
+  }
+}
+
+locals {
+  user = lower(split("@", var.user)[0])
+}
+
 resource "aws_vpc" "main" {
   count                = var.create_network ? 1 : 0
   cidr_block           = var.cidr_vpc
@@ -36,7 +57,7 @@ resource "tls_self_signed_cert" "ca_cert" {
   }
   validity_period_hours = 87600
   is_ca_certificate     = true
-  allowed_uses = ["cert_signing", "client_auth", "server_auth"]
+  allowed_uses          = ["cert_signing", "client_auth", "server_auth"]
 }
 
 resource "tls_private_key" "server_key" {
@@ -54,11 +75,11 @@ resource "tls_cert_request" "server_csr" {
 }
 
 resource "tls_locally_signed_cert" "server_cert" {
-  cert_request_pem   = tls_cert_request.server_csr.cert_request_pem
-  ca_private_key_pem = tls_private_key.ca_key.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.ca_cert.cert_pem
+  cert_request_pem      = tls_cert_request.server_csr.cert_request_pem
+  ca_private_key_pem    = tls_private_key.ca_key.private_key_pem
+  ca_cert_pem           = tls_self_signed_cert.ca_cert.cert_pem
   validity_period_hours = 8760
-  allowed_uses = ["digital_signature", "key_encipherment", "server_auth", "client_auth"]
+  allowed_uses          = ["digital_signature", "key_encipherment", "server_auth", "client_auth"]
 }
 
 resource "teleport_provision_token" "db" {
@@ -80,14 +101,14 @@ resource "aws_instance" "mysql" {
   security_groups             = var.security_group_ids != null ? var.security_group_ids : [aws_security_group.main[0].id]
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    token    = teleport_provision_token.db.metadata.name
-    domain   = var.proxy_address
-    major    = var.teleport_version
-    ca       = tls_self_signed_cert.ca_cert.cert_pem
-    cert     = tls_locally_signed_cert.server_cert.cert_pem
-    key      = tls_private_key.server_key.private_key_pem
-    tele_ca  = var.teleport_db_ca
-    env      = var.env
+    token   = teleport_provision_token.db.metadata.name
+    domain  = var.proxy_address
+    major   = var.teleport_version
+    ca      = tls_self_signed_cert.ca_cert.cert_pem
+    cert    = tls_locally_signed_cert.server_cert.cert_pem
+    key     = tls_private_key.server_key.private_key_pem
+    tele_ca = var.teleport_db_ca
+    env     = var.env
   })
 
   metadata_options {
@@ -103,6 +124,6 @@ resource "aws_instance" "mysql" {
   }
 
   tags = {
-    Name = "${var.user}-${var.env}-mysql"
+    Name = "${local.user}-${var.env}-mysql"
   }
 }

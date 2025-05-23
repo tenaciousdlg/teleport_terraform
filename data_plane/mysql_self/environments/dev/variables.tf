@@ -5,7 +5,7 @@ variable "env" {
 
 variable "region" {
   description = "AWS region to deploy resources"
-  default = "us-east-2"
+  default     = "us-east-2"
 }
 
 variable "user" {
