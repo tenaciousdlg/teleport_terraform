@@ -24,15 +24,38 @@ Provision and configure:
 | `mysql_hostname`    | (Optional) FQDN of MySQL instance, used in TLS cert CN         |
 | `ami_id`            | Ubuntu AMI ID                                                   |
 | `instance_type`     | EC2 instance type (e.g., `t3.small`)                           |
-| `subnet_id`         | Subnet for the instance                                         |
-| `security_group_ids`| List of security group IDs                                      |
+| `create_network`    | Whether to create a VPC, subnet, and security group (default: true) |
+| `cidr_vpc`          | (Optional) CIDR block for VPC if `create_network = true` (default: `10.0.0.0/16`) |
+| `cidr_subnet`       | (Optional) CIDR block for subnet if `create_network = true` (default: `10.0.1.0/24`) |
+| `subnet_id`         | (Optional) Use an existing subnet ID instead of creating one   |
+| `security_group_ids`| (Optional) Use existing security groups instead of creating one |
 
 #### Outputs
-| Name              | Description                         |
-|-------------------|-------------------------------------|
-| `ca_cert`         | Internal CA cert used for MySQL     |
+| Name              | Description                         |         | Internal CA cert used for MySQL     |
 | `teleport_db_ca`  | Teleport DB CA (as passed in)       |
 | `instance_ip`     | Public IP of the MySQL EC2 instance |
+
+#### Structure 
+
+```hcl
+teleport_terraform/
+├── modules/
+│   ├── teleport_mysql_instance/
+│   │   ├── main.tf               # EC2, TLS, userdata.tpl
+│   │   ├── variables.tf          # Inputs (network, env, proxy, etc.)
+│   │   ├── outputs.tf            # ca_cert, instance_ip
+│   │   └── userdata.tpl          # MySQL + teleport.yaml bootstrap
+│   └── teleport_mysql_registration/
+│       ├── main.tf               # teleport_database resource
+│       ├── variables.tf          # uri, env, ca_cert_chain, labels
+│       └── outputs.tf            # db_name
+├── environments/
+│   └── dev/
+│       ├── main.tf               # calls both modules
+│       ├── variables.tf          # env, user, proxy_address, etc.
+│       └── terraform.tfvars      # user-defined values
+└── README.md                     # full module docs and usage
+```
 
 ---
 
@@ -69,8 +92,12 @@ module "mysql_instance" {
   teleport_db_ca      = data.http.teleport_db_ca_cert.response_body
   ami_id              = data.aws_ami.ubuntu.id
   instance_type       = "t3.small"
-  subnet_id           = var.subnet_id
-  security_group_ids  = [var.security_group_id]
+
+  # Optional: use internal networking
+  create_network      = true
+  cidr_vpc            = "10.0.0.0/16"
+  cidr_subnet         = "10.0.1.0/24"
+}
 }
 
 module "mysql_registration" {
