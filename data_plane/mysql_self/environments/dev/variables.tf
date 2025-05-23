@@ -1,6 +1,5 @@
 variable "env" {
   description = "Environment name"
-  default     = "dev"
 }
 
 variable "region" {
