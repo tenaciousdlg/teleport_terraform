@@ -18,7 +18,7 @@ teleport_terraform/
 ├── modules/                     # Reusable infrastructure modules
 │   ├── mysql_instance/         # MySQL + TLS + teleport.yaml bootstrap
 │   ├── ssh_node/               # SSH EC2 nodes with dynamic labels
-│   ├── windows_instance/       # Windows EC2 join with agent
+│   ├── windows_local/          # Windows EC2 join with agent
 │   ├── app_grafana/            # Application access to Grafana
 │   └── registration/           # teleport_* resources (db, app)
 ├── data_plane/                 # Use case implementations
@@ -29,9 +29,17 @@ teleport_terraform/
 │   ├── dev/
 │   └── prod/
 ├── examples/                   # Minimal single-use examples
-├── control_plane/              # (Optional) Cluster bootstrapping
+├── control_plane/              # (Optional) Cluster bootstrapping of Auth and Proxy services in various scenarios
 └── README.md                   # This file
 ```
+
+---
+
+## Prerequisites
+
+- [Terraform](https://developer.hashicorp.com/terraform/downloads)
+- [Teleport CLI (tsh, tctl)](https://goteleport.com/download/)
+- AWS credentials configured (via environment variables or AWS CLI)
 
 ---
 
@@ -61,7 +69,6 @@ Run Terraform directly from a use case like `mysql_self` or `ssh_getting_started
 
 ```bash
 cd data_plane/mysql_self
-cp ../../environments/dev/terraform.tfvars.example terraform.tfvars
 terraform init
 terraform apply
 ```
@@ -94,18 +101,31 @@ resources:
 
 ---
 
-## Secure Inputs with tfvars
+## Providing Inputs Securely
 
-Supply your credentials and cluster address via a `terraform.tfvars` file:
+Supply credentials and configuration via environment variables (preferred) or a .tfvars file:
+
+Example environment variables:
 
 ```hcl
-user             = "dlg"
-proxy_address    = "teleport.example.com"
-teleport_version = "17.4.8"
-aws_region       = "us-east-2"
+export TF_VAR_user="dlg@example.com"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_teleport_version="17.4.8"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="dev"
 ```
 
-Never commit this — instead use `.gitignore`:
+Example `terraform.tfvars` file
+
+```hcl
+user             = "dlg@example.com"
+proxy_address    = "teleport.example.com"
+teleport_version = "17.4.8"
+region           = "us-east-2"
+env              = "dev"
+```
+
+Never commit a `.tfvars` file — instead use `.gitignore`:
 
 ```bash
 echo "*.tfvars" >> .gitignore
@@ -120,9 +140,9 @@ Each use case includes `terraform.tfvars.example` for safe copy/paste.
 | Module              | Purpose                                     |
 |---------------------|---------------------------------------------|
 | `ssh_node`          | Linux SSH EC2 with labels and SSM-friendly  |
-| `mysql_instance`    | TLS-enabled MySQL demo with teleport.yaml   |
+| `mysql_instance`    | TLS-enabled MySQL demo with dynamic registration   |
 | `registration`      | Generic DB/App resource registration        |
-| `windows_local`  | (Planned) Non-AD Windows node join          |
+| `windows_local`     | Non-AD Windows node join                    |
 | `app_grafana`       | (Planned) Application access demo           |
 
 ---
@@ -142,6 +162,7 @@ eval $(tctl terraform env)
 ```bash
 cd environments/dev
 terraform init
+terraform plan
 terraform apply
 ```
 
