@@ -106,8 +106,8 @@ resource "tls_locally_signed_cert" "server_cert" {
   allowed_uses          = ["digital_signature", "key_encipherment", "server_auth", "client_auth"]
 }
 
-resource "random_string" "uuid" {
-  length  = 20
+resource "random_string" "token" {
+  length  = 32
   special = false
 }
 
@@ -116,7 +116,7 @@ resource "teleport_provision_token" "db" {
   version = "v2"
   spec = {
     roles = ["Db", "Node"]
-    name  = random_string.uuid.result
+    name  = random_string.token.result
   }
   metadata = {
     expires = timeadd(timestamp(), "1h")
