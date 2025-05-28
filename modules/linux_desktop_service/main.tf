@@ -1,0 +1,119 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+    }
+    teleport = {
+      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+    }
+    random = {
+      source  = "hashicorp/random"
+    }
+  }
+}
+
+locals {
+  user = lower(split("@", var.user)[0])
+}
+
+resource "random_string" "token" {
+  length  = 32
+  special = false
+}
+
+resource "teleport_provision_token" "desktop_service" {
+  version = "v2"
+  spec = {
+    roles = ["WindowsDesktop", "Node"]
+    name  = random_string.token.result
+  }
+  metadata = {
+    expires = timeadd(timestamp(), "1h")
+  }
+}
+
+resource "aws_vpc" "main" {
+  count = var.create_network ? 1 : 0
+  cidr_block           = var.cidr_vpc
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+}
+
+resource "aws_subnet" "main" {
+  count                   = var.create_network ? 1 : 0
+  cidr_block              = var.cidr_subnet
+  vpc_id                  = aws_vpc.main[0].id
+  map_public_ip_on_launch = true
+}
+
+resource "aws_security_group" "main" {
+  count       = var.create_network ? 1 : 0
+  vpc_id      = aws_vpc.main[0].id
+  description = "windows demo sg for ${local.user}"
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.cidr_vpc]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_internet_gateway" "main" {
+  count  = var.create_network ? 1 : 0
+  vpc_id = aws_vpc.main[0].id
+}
+
+resource "aws_route_table" "main" {
+  count  = var.create_network ? 1 : 0
+  vpc_id = aws_vpc.main[0].id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main[0].id
+  }
+}
+
+resource "aws_route_table_association" "main" {
+  count          = var.create_network ? 1 : 0
+  subnet_id      = aws_subnet.main[0].id
+  route_table_id = aws_route_table.main[0].id
+}
+
+resource "aws_instance" "desktop_service" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  associate_public_ip_address = true
+  security_groups        = var.security_group_ids
+
+  user_data = templatefile("${path.module}/userdata.tpl", {
+    name        = "${var.env}-desktop-service"
+    windows_internal_dns = var.windows_internal_dns
+    token       = teleport_provision_token.desktop_service.metadata.name,
+    proxy_addr  = var.proxy_address,
+    teleport_version = var.teleport_version,
+    env         = var.env,
+    windows_hosts = jsonencode(var.windows_hosts)
+  })
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  root_block_device {
+    #volume_size           = 8
+    #volume_type           = "gp3"
+    encrypted             = true
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "${local.user}-${var.env}-desktop-service"
+  }
+}
