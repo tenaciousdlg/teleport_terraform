@@ -66,7 +66,6 @@ app_service:
         "teleport.dev/app": "grafana"
   apps:
     - name: grafana
-      description: "terraform managed app access example with grafana"
       uri: "http://localhost:3000"
       public_addr: grafana.${env}.${proxy_address}
       rewrite:
