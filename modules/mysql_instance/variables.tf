@@ -31,32 +31,12 @@ variable "instance_type" {
   description = "EC2 instance type (e.g., t3.small)"
 }
 
-variable "create_network" {
-  description = "Whether to create internal VPC, subnet, and security group"
-  type        = bool
-  default     = true
-}
-
-variable "cidr_vpc" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "cidr_subnet" {
-  description = "CIDR block for subnet"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
 variable "subnet_id" {
   description = "Optional: existing subnet ID to use"
   type        = string
-  default     = null
 }
 
 variable "security_group_ids" {
   description = "Optional: existing security group IDs"
   type        = list(string)
-  default     = null
 }

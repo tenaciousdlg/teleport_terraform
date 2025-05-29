@@ -2,70 +2,21 @@ terraform {
   required_providers {
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
     }
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.39"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = ">= 4.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = ">= 3.0"
     }
   }
 }
 
 locals {
   user = lower(split("@", var.user)[0])
-}
-
-resource "aws_vpc" "main" {
-  count                = var.create_network ? 1 : 0
-  cidr_block           = var.cidr_vpc
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-}
-
-resource "aws_subnet" "main" {
-  count      = var.create_network ? 1 : 0
-  vpc_id     = aws_vpc.main[0].id
-  cidr_block = var.cidr_subnet
-}
-
-resource "aws_security_group" "main" {
-  count       = var.create_network ? 1 : 0
-  vpc_id      = aws_vpc.main[0].id
-  description = "Allow all egress"
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_internet_gateway" "main" {
-  count  = var.create_network ? 1 : 0
-  vpc_id = aws_vpc.main[0].id
-}
-
-resource "aws_route_table" "main" {
-  count  = var.create_network ? 1 : 0
-  vpc_id = aws_vpc.main[0].id
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main[0].id
-  }
-}
-
-resource "aws_route_table_association" "main" {
-  count          = var.create_network ? 1 : 0
-  subnet_id      = aws_subnet.main[0].id
-  route_table_id = aws_route_table.main[0].id
 }
 
 resource "tls_private_key" "ca_key" {
@@ -126,9 +77,9 @@ resource "teleport_provision_token" "db" {
 resource "aws_instance" "mysql" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id != null ? var.subnet_id : aws_subnet.main[0].id
+  subnet_id                   = var.subnet_id
+  security_groups             = var.security_group_ids
   associate_public_ip_address = true
-  security_groups             = var.security_group_ids != null ? var.security_group_ids : [aws_security_group.main[0].id]
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     token   = teleport_provision_token.db.metadata.name
