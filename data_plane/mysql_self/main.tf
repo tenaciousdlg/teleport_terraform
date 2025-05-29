@@ -47,6 +47,14 @@ data "http" "teleport_db_ca_cert" {
   url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
 }
 
+module "network" {
+  source      = "../../modules/network"
+  cidr_vpc    = "10.0.0.0/16"
+  cidr_subnet = "10.0.1.0/24"
+  cidr_public_subnet = "10.0.0.0/24"
+  env         = var.env
+}
+
 module "mysql_instance" {
   source           = "../../modules/mysql_instance"
   env              = var.env

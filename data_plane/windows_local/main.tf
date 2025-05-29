@@ -57,6 +57,14 @@ data "aws_ami" "windows_server" {
   }
 }
 
+module "network" {
+  source      = "../../modules/network"
+  cidr_vpc    = "10.0.0.0/16"
+  cidr_subnet = "10.0.1.0/24"
+  cidr_public_subnet = "10.0.0.0/24"
+  env         = var.env
+}
+
 module "windows_instance" {
   source = "../../modules/windows_instance"
 
