@@ -51,21 +51,3 @@ variable "windows_internal_dns" {
   description = "private dns of windows host"
   type        = string
 }
-
-variable "create_network" {
-  description = "Whether to create internal VPC, subnet, and security group"
-  type        = bool
-  default     = true
-}
-
-variable "cidr_vpc" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "cidr_subnet" {
-  description = "CIDR block for subnet"
-  type        = string
-  default     = "10.0.1.0/24"
-}
