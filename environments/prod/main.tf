@@ -54,10 +54,6 @@ module "mysql_instance" {
 
   ami_id        = data.aws_ami.ubuntu.id
   instance_type = "t3.small"
-
-  create_network = true
-  cidr_vpc       = "10.0.0.0/16"
-  cidr_subnet    = "10.0.1.0/24"
 }
 
 module "mysql_registration" {

@@ -81,7 +81,6 @@ module "mysql_instance" {
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.small"
-  create_network     = false
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
@@ -108,7 +107,6 @@ module "ssh_node" {
   agent_count        = 2
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"
-  create_network     = false
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
@@ -121,7 +119,6 @@ module "windows_instance" {
   teleport_version   = var.teleport_version
   ami_id             = data.aws_ami.windows_server.id
   instance_type      = "t3.medium"
-  create_network     = false
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
@@ -134,7 +131,6 @@ module "linux_desktop_service" {
   teleport_version     = var.teleport_version
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.small"
-  create_network       = false
   subnet_id            = module.network.subnet_id
   security_group_ids   = [module.network.security_group_id]
   windows_internal_dns = module.windows_instance.private_dns

@@ -51,7 +51,6 @@ module "ssh_nodes" {
   ami_id        = data.aws_ami.linux.id
   instance_type = "t3.micro"
 
-  create_network = true
-  cidr_vpc       = "10.0.0.0/16"
-  cidr_subnet    = "10.0.1.0/24"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }

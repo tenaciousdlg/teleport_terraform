@@ -56,9 +56,8 @@ module "mysql_instance" {
   teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
   ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.small"
-  create_network   = true
-  cidr_vpc         = "10.0.0.0/16"
-  cidr_subnet      = "10.0.2.0/24"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }
 
 module "mysql_registration" {
