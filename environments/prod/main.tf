@@ -8,6 +8,10 @@ terraform {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
       version = "~> 17.0"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -30,12 +34,16 @@ data "http" "teleport_db_ca_cert" {
   url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
 }
 
-data "aws_ami" "ubuntu" {
+data "aws_ami" "windows_server" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
+    values = ["Windows_Server-2022-English-Full-Base-*"]
+  }
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
   filter {
     name   = "virtualization-type"
@@ -43,26 +51,118 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+data "aws_ami" "linux" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+module "network" {
+  source      = "../../modules/network"
+  cidr_vpc    = "10.0.0.0/16"
+  cidr_subnet = "10.0.1.0/24"
+  cidr_public_subnet = "10.0.0.0/24"
+  env         = var.env
+}
+
 module "mysql_instance" {
-  source = "../../modules/teleport_mysql_instance"
-
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
-
-  ami_id        = data.aws_ami.ubuntu.id
-  instance_type = "t3.small"
+  source             = "../../modules/mysql_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }
 
 module "mysql_registration" {
-  source = "../../modules/teleport_mysql_registration"
-
-  env     = var.env
-  uri     = "localhost:3306"
-  ca_cert = module.mysql_instance.ca_cert
+  source        = "../../modules/registration"
+  resource_type = "database"
+  name          = "mysql-${var.env}"
+  description   = "MySQL database in ${var.env} full deployment"
+  protocol      = "mysql"
+  uri           = "localhost:3306"
+  ca_cert_chain = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
+  }
+}
+
+module "ssh_node" {
+  source             = "../../modules/ssh_node"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  agent_count        = 2
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.micro"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "windows_instance" {
+  source             = "../../modules/windows_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  ami_id             = data.aws_ami.windows_server.id
+  instance_type      = "t3.medium"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "linux_desktop_service" {
+  source               = "../../modules/linux_desktop_service"
+  env                  = var.env
+  user                 = var.user
+  proxy_address        = var.proxy_address
+  teleport_version     = var.teleport_version
+  ami_id               = data.aws_ami.linux.id
+  instance_type        = "t3.small"
+  subnet_id            = module.network.subnet_id
+  security_group_ids   = [module.network.security_group_id]
+  windows_internal_dns = module.windows_instance.private_dns
+  windows_hosts = [
+    {
+      name    = module.windows_instance.hostname
+      address = "${module.windows_instance.private_ip}:3389"
+    }
+  ]
+}
+
+module "grafana_app" {
+  source             = "../../modules/app_grafana"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "grafana_registration" {
+  source        = "../../modules/registration"
+  resource_type = "app"
+  name          = "grafana-${var.env}"
+  description   = "Grafana dashboard for ${var.env}"
+  uri           = "http://localhost:3000"
+  public_addr   = "grafana-${var.env}.${var.proxy_address}"
+  labels = {
+    tier = var.env
+    "teleport.dev/app" = "grafana"
   }
 }
