@@ -5,5 +5,5 @@ output "provision_token" {
 
 output "private_ips" {
   description = "Private IPs of deployed SSH nodes"
-  value       = aws_instance.ssh_node[*].private_ips
+  value       = aws_instance.ssh_node[*].private_ip
 }
