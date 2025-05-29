@@ -141,3 +141,28 @@ module "linux_desktop_service" {
     }
   ]
 }
+
+module "grafana_app" {
+  source             = "../../modules/app_grafana"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "grafana_registration" {
+  source        = "../../modules/registration"
+  resource_type = "app"
+  name          = "grafana-${var.env}"
+  description   = "Grafana dashboard for ${var.env}"
+  uri           = "http://localhost:3000"
+  public_addr   = "grafana-${var.env}.${var.proxy_address}"
+  labels = {
+    tier = var.env
+    "teleport.dev/app" = "grafana"
+  }
+}
