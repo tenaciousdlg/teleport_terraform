@@ -3,7 +3,7 @@ output "provision_token" {
   value       = teleport_provision_token.agent.metadata.name
 }
 
-output "public_ips" {
-  description = "Public IPs of deployed SSH nodes"
-  value       = aws_instance.ssh_node[*].public_ip
+output "private_ips" {
+  description = "Private IPs of deployed SSH nodes"
+  value       = aws_instance.ssh_node[*].private_ips
 }
