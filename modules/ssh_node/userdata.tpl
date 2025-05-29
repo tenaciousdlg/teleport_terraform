@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 sudo hostnamectl set-hostname ${host}
 curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
 echo "${token}" > /tmp/token

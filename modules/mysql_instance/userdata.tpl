@@ -1,32 +1,27 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Set hostname
-sudo hostnamectl set-hostname "${env}-mysql"
+hostnamectl set-hostname "${env}-mysql"
 
-# System prep
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y mariadb-server mariadb-client jq
+# Install dependencies
+dnf update -y
+dnf install -y mariadb105-server jq
 
-sudo systemctl enable mariadb
-sudo systemctl start mariadb
+systemctl enable mariadb
+systemctl start mariadb
 
-# mysql secure installation (default answers piped in)
-sudo mysql_secure_installation <<EOF
-
-y
-n
-y
-y
-y
-y
-EOF
+# Secure MySQL (non-interactive)
+mysql -e "DELETE FROM mysql.user WHERE User='';"
+mysql -e "DROP DATABASE IF EXISTS test;"
+mysql -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+mysql -e "FLUSH PRIVILEGES;"
 
 # Install Teleport
-curl https://goteleport.com/static/install.sh | bash -s "${major}" "enterprise"
+curl https://goteleport.com/static/install.sh | bash -s "${major}" enterprise
 
 # Write teleport.yaml
-sudo tee /etc/teleport.yaml > /dev/null <<EOF
+cat > /etc/teleport.yaml <<EOF
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
@@ -55,30 +50,30 @@ app_service:
 EOF
 
 # TLS setup for MySQL
-sudo mkdir -p /etc/mysql/ssl
-echo "${ca}"      | sudo tee /etc/mysql/ssl/server.cas > /dev/null
-echo "${tele_ca}" | sudo tee -a /etc/mysql/ssl/server.cas > /dev/null
-echo "${cert}"    | sudo tee /etc/mysql/ssl/server.crt > /dev/null
-echo "${key}"     | sudo tee /etc/mysql/ssl/server.key > /dev/null
+mkdir -p /etc/mysql/ssl
+echo "${ca}"      > /etc/mysql/ssl/server.cas
+echo "${tele_ca}" >> /etc/mysql/ssl/server.cas
+echo "${cert}"    > /etc/mysql/ssl/server.crt
+echo "${key}"     > /etc/mysql/ssl/server.key
 
-# MySQL TLS config
-sudo tee /etc/mysql/conf.d/mysql.cnf > /dev/null <<EOF
+# Configure MariaDB for TLS
+cat > /etc/my.cnf.d/ssl.cnf <<EOF
 [mariadb]
 require_secure_transport=ON
 ssl-ca=/etc/mysql/ssl/server.cas
 ssl-cert=/etc/mysql/ssl/server.crt
 ssl-key=/etc/mysql/ssl/server.key
-log_error=/var/log/mysql/mysqld.log
+log_error=/var/log/mysqld.log
 EOF
 
-# Create cert-authenticated users
-sudo mysql -u root -e "CREATE USER 'writer'@'%' REQUIRE SUBJECT '/CN=writer';"
-sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'writer'@'%';"
-sudo mysql -u root -e "CREATE USER 'reader'@'%' REQUIRE SUBJECT '/CN=reader';"
-sudo mysql -u root -e "GRANT SELECT, SHOW VIEW ON *.* TO 'reader'@'%';"
-sudo mysql -u root -e "FLUSH PRIVILEGES;"
+# Create users for Teleport certificate auth
+mysql -e "CREATE USER 'writer'@'%' REQUIRE SUBJECT '/CN=writer';"
+mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'writer'@'%';"
+mysql -e "CREATE USER 'reader'@'%' REQUIRE SUBJECT '/CN=reader';"
+mysql -e "GRANT SELECT, SHOW VIEW ON *.* TO 'reader'@'%';"
+mysql -e "FLUSH PRIVILEGES;"
 
 # Restart services
-sudo systemctl restart mariadb
-sudo systemctl enable teleport
-sudo systemctl restart teleport
+systemctl restart mariadb
+systemctl enable teleport
+systemctl restart teleport

@@ -34,19 +34,6 @@ data "http" "teleport_db_ca_cert" {
   url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
 }
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 data "aws_ami" "windows_server" {
   most_recent = true
   owners      = ["amazon"]
@@ -64,7 +51,7 @@ data "aws_ami" "windows_server" {
   }
 }
 
-data "aws_ami" "amazon" {
+data "aws_ami" "linux" {
   most_recent = true
   owners      = ["amazon"]
   filter {
@@ -77,18 +64,26 @@ data "aws_ami" "amazon" {
   }
 }
 
+module "network" {
+  source      = "../../modules/network"
+  cidr_vpc    = "10.0.0.0/16"
+  cidr_subnet = "10.0.1.0/24"
+  cidr_public_subnet = "10.0.0.0/24"
+  env         = var.env
+}
+
 module "mysql_instance" {
-  source           = "../../modules/mysql_instance"
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
-  ami_id           = data.aws_ami.ubuntu.id
-  instance_type    = "t3.small"
-  create_network   = true
-  cidr_vpc         = "10.0.0.0/16"
-  cidr_subnet      = "10.0.1.0/24"
+  source             = "../../modules/mysql_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
+  create_network     = false
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }
 
 module "mysql_registration" {
@@ -111,43 +106,37 @@ module "ssh_node" {
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   agent_count        = 2
-  ami_id             = data.aws_ami.ubuntu.id
+  ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"
   create_network     = false
-  subnet_id          = module.mysql_instance.subnet_id
-  security_group_ids = [module.mysql_instance.security_group_id]
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }
 
 module "windows_instance" {
-  source = "../../modules/windows_instance"
-
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-
-  ami_id           = data.aws_ami.windows_server.id
-  instance_type    = "t3.medium"
-
+  source             = "../../modules/windows_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  ami_id             = data.aws_ami.windows_server.id
+  instance_type      = "t3.medium"
   create_network     = false
-  subnet_id          = module.mysql_instance.subnet_id
-  security_group_ids = [module.mysql_instance.security_group_id]
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
 }
 
 module "linux_desktop_service" {
-  source = "../../modules/linux_desktop_service"
-
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-
-  ami_id             = data.aws_ami.linux.id
-  instance_type      = "t3.small"
-
+  source               = "../../modules/linux_desktop_service"
+  env                  = var.env
+  user                 = var.user
+  proxy_address        = var.proxy_address
+  teleport_version     = var.teleport_version
+  ami_id               = data.aws_ami.linux.id
+  instance_type        = "t3.small"
   create_network       = false
-  subnet_id            = module.mysql_instance.subnet_id
-  security_group_ids   = [module.mysql_instance.security_group_id]
+  subnet_id            = module.network.subnet_id
+  security_group_ids   = [module.network.security_group_id]
   windows_internal_dns = module.windows_instance.private_dns
   windows_hosts = [
     {

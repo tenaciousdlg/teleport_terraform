@@ -26,12 +26,12 @@ provider "teleport" {
   addr = "${var.proxy_address}:443"
 }
 
-data "aws_ami" "ubuntu" {
+data "aws_ami" "linux" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
+    values = ["al2023-ami-*-x86_64"]
   }
   filter {
     name   = "virtualization-type"
@@ -48,7 +48,7 @@ module "ssh_nodes" {
   teleport_version = var.teleport_version
 
   agent_count   = 3
-  ami_id        = data.aws_ami.ubuntu.id
+  ami_id        = data.aws_ami.linux.id
   instance_type = "t3.micro"
 
   create_network = true

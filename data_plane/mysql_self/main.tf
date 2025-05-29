@@ -30,12 +30,12 @@ provider "teleport" {
   addr = "${var.proxy_address}:443"
 }
 
-data "aws_ami" "ubuntu" {
+data "aws_ami" "linux" {
   most_recent = true
   owners      = ["amazon"]
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-*-22.04-amd64-server-*"]
+    values = ["al2023-ami-*-x86_64"]
   }
   filter {
     name   = "virtualization-type"
@@ -54,7 +54,7 @@ module "mysql_instance" {
   proxy_address    = var.proxy_address
   teleport_version = var.teleport_version
   teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
-  ami_id           = data.aws_ami.ubuntu.id
+  ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.small"
   create_network   = true
   cidr_vpc         = "10.0.0.0/16"
