@@ -26,19 +26,37 @@ resource "teleport_database" "this" {
   }
 }
 
-resource "teleport_app" "this" {
-  count = var.resource_type == "app" ? 1 : 0
+# fix for dyanmic block within map spec: assignment 
+locals {
+  base_spec = {
+    uri                  = var.uri
+    public_addr          = var.public_addr
+    insecure_skip_verify = var.insecure_skip_verify
+  }
 
+  rewrite_spec = length(var.rewrite_headers) > 0 ? {
+    rewrite = {
+      headers = [
+        for header in var.rewrite_headers : {
+          name  = split(":", header)[0]
+          value = trimspace(join(":", slice(split(":", header), 1, length(split(":", header)))) )
+        }
+      ]
+    }
+  } : {}
+
+  app_spec = merge(local.base_spec, local.rewrite_spec)
+}
+
+resource "teleport_app" "this" {
+  count   = var.resource_type == "app" ? 1 : 0
   version = "v3"
+
   metadata = {
     name        = var.name
     description = var.description
-    labels = merge(var.labels, {
-      "teleport.dev/origin" = "dynamic"
-    })
+    labels      = merge(var.labels, { "teleport.dev/origin" = "dynamic" })
   }
-  spec = {
-    uri      = var.uri
-    public_addr = var.public_addr != null ? var.public_addr : var.uri
-  }
+
+  spec = local.app_spec
 }

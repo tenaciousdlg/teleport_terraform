@@ -35,7 +35,8 @@ jwk_set_url = https://${proxy_address}/.well-known/jwks.json
 auto_sign_up = true
 EOT
 
-cd /opt/grafana
+# Needed for grafana container user to be able to use mounted directory 
+chown -R 472:472 /opt/grafana/data
 docker run -d \
   --name=grafana \
   -p 3000:3000 \
@@ -64,15 +65,6 @@ app_service:
   resources:
     - labels:
         "teleport.dev/app": "grafana"
-  apps:
-    - name: grafana
-      uri: "http://localhost:3000"
-      public_addr: grafana.${env}.${proxy_address}
-      rewrite:
-        headers:
-        - "Host: grafana.${env}.${proxy_address}"
-        - "Origin: https://grafana.${env}.${proxy_address}"
-      insecure_skip_verify: true
 ssh_service:
   enabled: true
   labels:

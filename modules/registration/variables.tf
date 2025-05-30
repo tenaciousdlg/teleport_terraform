@@ -2,7 +2,12 @@ variable "resource_type" {
   description = "Teleport resource type: database or app"
   type        = string
   default     = "database"
+  validation {
+    condition     = contains(["database", "app"], var.resource_type)
+    error_message = "resource_type must be either 'database' or 'app'."
+  }
 }
+
 
 variable "name" {
   description = "Name of the Teleport resource"
@@ -41,4 +46,14 @@ variable "public_addr" {
 variable "labels" {
   description = "Labels to apply to the resource"
   type        = map(string)
+}
+
+variable "rewrite_headers" {
+  type    = list(string)
+  default = []
+}
+
+variable "insecure_skip_verify" {
+  type    = bool
+  default = false
 }
