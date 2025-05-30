@@ -19,7 +19,7 @@ ssh_service:
   enabled: true
   labels:
     tier: ${env}
-    os: linux
+    os: amzn23
   commands:
     - name: "hostname"
       command: ["/bin/hostname"]

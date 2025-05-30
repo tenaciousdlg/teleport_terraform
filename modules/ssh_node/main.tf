@@ -45,7 +45,7 @@ resource "aws_instance" "ssh_node" {
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     env              = var.env
-    host             = "ssh-${count.index}"
+    host             = "${var.env}-ssh-${count.index}"
   })
 
   metadata_options {
