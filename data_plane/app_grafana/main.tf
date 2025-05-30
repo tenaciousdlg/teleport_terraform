@@ -71,7 +71,12 @@ module "grafana_registration" {
   uri           = "http://localhost:3000"
   public_addr   = "grafana-${var.env}.${var.proxy_address}"
   labels = {
-    tier = var.env
+    tier              = var.env
     "teleport.dev/app" = "grafana"
   }
+  rewrite_headers = [
+    "Host: grafana-${var.env}.${var.proxy_address}",
+    "Origin: https://grafana-${var.env}.${var.proxy_address}"
+  ]
+  insecure_skip_verify = true
 }
