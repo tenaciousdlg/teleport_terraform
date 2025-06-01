@@ -36,7 +36,7 @@ auto_sign_up = true
 EOT
 
 # Needed for grafana container user to be able to use mounted directory 
-chown -R 472:472 /opt/grafana/data
+chown -R 472:472 /opt/grafana/
 docker run -d \
   --name=grafana \
   -p 3000:3000 \
