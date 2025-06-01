@@ -1,19 +1,24 @@
+variable "region" {
+  description = "AWS region to deploy MySQL in"
+  type        = string
+}
+
 variable "env" {
-  description = "Environment label"
+  description = "Environment label (e.g., dev, prod)"
   type        = string
 }
 
 variable "user" {
-  description = "User tag for EC2"
+  description = "Tag to associate with deployed resources"
   type        = string
 }
 
 variable "proxy_address" {
-  description = "Teleport Proxy hostname (without https)"
+  description = "Teleport Proxy address (without https)"
   type        = string
 }
 
 variable "teleport_version" {
-  description = "Teleport version to install (e.g., 16.0.0)"
+  description = "Teleport version to install on the MySQL host"
   type        = string
 }
