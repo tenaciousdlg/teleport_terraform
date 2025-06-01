@@ -2,15 +2,23 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.39"
+      version = "~> 5.99"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
       version = "~> 17.0"
     }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.0"
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
     }
   }
 }
@@ -48,33 +56,34 @@ data "http" "teleport_db_ca_cert" {
 }
 
 module "network" {
-  source      = "../../modules/network"
-  cidr_vpc    = "10.0.0.0/16"
-  cidr_subnet = "10.0.1.0/24"
+  source             = "../../modules/network"
+  cidr_vpc           = "10.0.0.0/16"
+  cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
-  env         = var.env
+  env                = var.env
 }
 
 module "mysql_instance" {
-  source           = "../../modules/mysql_instance"
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
+  source             = "../../modules/mysql_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
 
 module "mysql_registration" {
-  source            = "../../modules/registration"
-  name              = "mysql-${var.env}"
-  description       = "MySQL database in ${var.env}"
-  uri               = "localhost:3306"
-  protocol          = "mysql"
-  ca_cert_chain     = module.mysql_instance.ca_cert
+  source        = "../../modules/registration"
+  resource_type = "database"
+  name          = "mysql-${var.env}"
+  description   = "Self-hosted MySQL database in ${var.env}"
+  protocol      = "mysql"
+  uri           = "localhost:3306"
+  ca_cert_chain = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
   }
