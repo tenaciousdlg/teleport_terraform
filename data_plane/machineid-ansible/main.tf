@@ -22,13 +22,13 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "Purpose"              = "teleport machine id with ansible demo"
-      "tier"                  = "dev"
+      "tier"                 = "dev"
     }
   }
 }
 
 provider "teleport" {
-  addr               = "${var.proxy_address}:443"
+  addr = "${var.proxy_address}:443"
 }
 
 provider "random" {

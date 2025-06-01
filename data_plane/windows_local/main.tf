@@ -58,11 +58,11 @@ data "aws_ami" "windows_server" {
 }
 
 module "network" {
-  source      = "../../modules/network"
-  cidr_vpc    = "10.0.0.0/16"
-  cidr_subnet = "10.0.1.0/24"
+  source             = "../../modules/network"
+  cidr_vpc           = "10.0.0.0/16"
+  cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
-  env         = var.env
+  env                = var.env
 }
 
 module "windows_instance" {
@@ -88,11 +88,11 @@ module "linux_desktop_service" {
   proxy_address    = var.proxy_address
   teleport_version = var.teleport_version
 
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.small"
 
-  subnet_id          = module.network.subnet_id
-  security_group_ids = [module.network.security_group_id]
+  subnet_id            = module.network.subnet_id
+  security_group_ids   = [module.network.security_group_id]
   windows_internal_dns = module.windows_instance.private_dns
   windows_hosts = [
     {
