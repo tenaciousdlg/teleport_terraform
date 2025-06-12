@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
-sudo hostnamectl set-hostname ${host}
+hostnamectl set-hostname ${host}
+dnf install nginx -y 
 curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
 echo "${token}" > /tmp/token
 
@@ -17,6 +18,9 @@ teleport:
       output: text
 ssh_service:
   enabled: true
+  enhanced_recording:
+    # Enable or disable enhanced auditing for this node. Default value: false.
+    enabled: true
   labels:
     tier: ${env}
     os: amzn23
@@ -38,3 +42,5 @@ EOF
 
 systemctl enable teleport
 systemctl start teleport
+systemctl enable nginx
+systemctl restart nginx
