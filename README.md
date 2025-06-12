@@ -81,6 +81,9 @@ tsh login --proxy=your-cluster.teleport.com
 
 # Set up Terraform provider authentication
 eval $(tctl terraform env)
+
+# This command sets temporary environment variables for the Teleport Terraform provider
+# Re-run this command if you encounter authentication errors during terraform operations
 ```
 
 ### 3. Set Demo Environment Variables
@@ -95,7 +98,7 @@ export TF_VAR_teleport_version="17.5.2"
 export TF_VAR_region="us-east-2"
 
 # Environment-specific (change as needed)
-export TF_VAR_env="dev"        # or "prod", "staging", etc. (just reference it in your affiliated Teleport Roles)
+export TF_VAR_env="dev"        # or "prod", "staging", etc.
 ```
 
 ### 4. Deploy Your Demo
@@ -164,7 +167,7 @@ terraform init && terraform apply
 
 ### Why Environment Variables Over .tfvars Files?
 
-**✅ Advantages:**
+**Advantages:**
 - **Quick environment switching** - change `TF_VAR_env` to switch demos
 - **No file management** - no need to maintain multiple .tfvars files
 - **Consistent across demos** - same variables work everywhere
