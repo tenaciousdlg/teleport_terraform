@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.39"
+      version = "~> 5.99"
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
@@ -11,6 +11,14 @@ terraform {
     http = {
       source  = "hashicorp/http"
       version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
     }
   }
 }
@@ -95,6 +103,34 @@ module "mysql_registration" {
   ca_cert_chain = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
+  }
+}
+
+
+module "postgres_instance" {
+  source             = "../../modules/postgres_instance"
+  env                = var.env
+  user               = var.user
+  proxy_address      = var.proxy_address
+  teleport_version   = var.teleport_version
+  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
+  postgres_hostname  = "postgres.dev.internal"
+  ami_id             = data.aws_ami.linux.id
+  instance_type      = "t3.small"
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "postgres_registration" {
+  source        = "../../modules/registration"
+  resource_type = "database"
+  name          = "postgres-${var.env}"
+  description   = "Self-hosted Postgres for ${var.env}"
+  protocol      = "postgres"
+  uri           = "localhost:5432"
+  ca_cert_chain = module.postgres_instance.ca_cert
+  labels = {
+    "tier" = var.env
   }
 }
 
