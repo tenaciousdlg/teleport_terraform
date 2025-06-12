@@ -1,7 +1,6 @@
 variable "env" {
   description = "Environment (e.g. dev, prod)"
   type        = string
-  default     = "dev"
 }
 
 variable "user" {
