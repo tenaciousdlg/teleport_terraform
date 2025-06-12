@@ -15,7 +15,6 @@ Modules are built for **Solutions Engineers** to rapidly demo Teleport features 
 
 ## Repository Layout
 
-```
 teleport_terraform/
 ├── modules/                     # Reusable infrastructure modules
 │   ├── mysql_instance/         # MySQL + TLS + teleport.yaml bootstrap
@@ -43,7 +42,6 @@ teleport_terraform/
 │   ├── linux/                  # Single-node clusters
 │   └── linux_proxypeers/       # Proxy peering architecture
 └── README.md                   # This file
-```
 
 ---
 
