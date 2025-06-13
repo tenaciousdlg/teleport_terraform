@@ -15,7 +15,7 @@ Modules are built for **Solutions Engineers** to rapidly demo Teleport features 
 
 ## Repository Layout
 
-### **🏗️ Modules** - Reusable Infrastructure Components
+### **Modules** - Reusable Infrastructure Components
 | Module | Purpose | Features |
 |--------|---------|----------|
 | **`mysql_instance/`** | MySQL + TLS + teleport.yaml bootstrap | TLS encryption, certificate auth, custom CA |
@@ -28,7 +28,7 @@ Modules are built for **Solutions Engineers** to rapidly demo Teleport features 
 | **`network/`** | VPC + security group templates | VPC, subnets, security groups, NAT gateway |
 | **`registration/`** | teleport_* resources (db, app) | Generic teleport_database and teleport_app |
 
-### **🧪 Data Plane** - Use Case Implementations
+### **Data Plane** - Use Case Implementations
 | Use Case | Purpose | Based On |
 |----------|---------|----------|
 | **`mysql_self/`** | Self-hosted MySQL demo | [Database Access with Self-Hosted MySQL/MariaDB](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/) |
@@ -39,13 +39,13 @@ Modules are built for **Solutions Engineers** to rapidly demo Teleport features 
 | **`windows_local/`** | Windows Desktop Access demo | [Configure access for local Windows users](https://goteleport.com/docs/enroll-resources/desktop-access/getting-started/) |
 | **`machineid_ansible/`** | Machine ID automation demo | [Machine ID with Ansible](https://goteleport.com/docs/enroll-resources/machine-id/access-guides/ansible/) |
 
-### **🏢 Environments** - Complete Integrated Deployments
+### **Environments** - Complete Integrated Deployments
 | Environment | Purpose |
 |-------------|---------|
 | **`dev/`** | Complete development environment |
 | **`prod/`** | Complete production environment |
 
-### **☁️ Control Plane** - Teleport Cluster Deployment Options
+### **Control Plane** - Teleport Cluster Deployment Options
 | Deployment Type | Purpose |
 |-----------------|---------|
 | **`eks/`** | Kubernetes-based clusters |
