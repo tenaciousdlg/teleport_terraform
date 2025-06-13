@@ -15,35 +15,42 @@ Modules are built for **Solutions Engineers** to rapidly demo Teleport features 
 
 ## Repository Layout
 
-```
-teleport_terraform/
-├── modules/                     # Reusable infrastructure modules
-│   ├── mysql_instance/         # MySQL + TLS + teleport.yaml bootstrap
-│   ├── postgres_instance/      # PostgreSQL + TLS + certificate auth
-│   ├── ssh_node/               # SSH EC2 nodes with dynamic labels
-│   ├── windows_instance/       # Windows Desktop Access
-│   ├── app_grafana/            # Application access to Grafana with JWT
-│   ├── app_httpbin/            # HTTP testing applications
-│   ├── machineid_ansible/      # Machine ID + Ansible automation
-│   ├── network/                # VPC + security group templates
-│   └── registration/           # teleport_* resources (db, app)
-├── data_plane/                 # Use case implementations
-│   ├── mysql_self/             # Based on [Database Access with Self-Hosted MySQL/MariaDB](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/)
-│   ├── postgres_self/          # Based on [Database Access with Self-Hosted PostgreSQL](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/)
-│   ├── ssh_getting_started/    # Based on [Server Access Getting Started Guide](https://goteleport.com/docs/enroll-resources/server-access/getting-started/)
-│   ├── app_grafana/            # Based on [Protect a Web Application with Teleport](https://goteleport.com/docs/enroll-resources/application-access/getting-started/)
-│   ├── app_httpbin/            # Simple HTTP app demo
-│   ├── windows_local/          # Based on [Configure access for local Windows users](https://goteleport.com/docs/enroll-resources/desktop-access/getting-started/)
-│   └── machineid_ansible/      # Based on [Machine ID with Ansible](https://goteleport.com/docs/enroll-resources/machine-id/access-guides/ansible/)
-├── environments/               # Dev/prod/named envs to deploy stacks
-│   ├── dev/                    # Complete development environment
-│   └── prod/                   # Complete production environment
-├── control_plane/              # Teleport cluster deployment options
-│   ├── eks/                    # Kubernetes-based clusters
-│   ├── linux/                  # Single-node clusters
-│   └── linux_proxypeers/       # Proxy peering architecture
-└── README.md                   # This file
-```
+### **🏗️ Modules** - Reusable Infrastructure Components
+| Module | Purpose | Features |
+|--------|---------|----------|
+| **`mysql_instance/`** | MySQL + TLS + teleport.yaml bootstrap | TLS encryption, certificate auth, custom CA |
+| **`postgres_instance/`** | PostgreSQL + TLS + certificate auth | TLS encryption, certificate auth, custom users |
+| **`ssh_node/`** | SSH EC2 nodes with dynamic labels | Dynamic labels, enhanced recording, custom commands |
+| **`windows_instance/`** | Windows Desktop Access | RDP access, local user creation, domain joining |
+| **`app_grafana/`** | Application access to Grafana with JWT | JWT integration, SSO, dashboard access |
+| **`app_httpbin/`** | HTTP testing applications | Simple web application for testing |
+| **`machineid_ansible/`** | Machine ID + Ansible automation | Bot authentication, Ansible playbooks |
+| **`network/`** | VPC + security group templates | VPC, subnets, security groups, NAT gateway |
+| **`registration/`** | teleport_* resources (db, app) | Generic teleport_database and teleport_app |
+
+### **🧪 Data Plane** - Use Case Implementations
+| Use Case | Purpose | Based On |
+|----------|---------|----------|
+| **`mysql_self/`** | Self-hosted MySQL demo | [Database Access with Self-Hosted MySQL/MariaDB](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/) |
+| **`postgres_self/`** | Self-hosted PostgreSQL demo | [Database Access with Self-Hosted PostgreSQL](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/) |
+| **`ssh_getting_started/`** | Basic SSH access demo | [Server Access Getting Started Guide](https://goteleport.com/docs/enroll-resources/server-access/getting-started/) |
+| **`app_grafana/`** | Application access demo | [Protect a Web Application with Teleport](https://goteleport.com/docs/enroll-resources/application-access/getting-started/) |
+| **`app_httpbin/`** | Simple HTTP app demo | HTTP testing and demonstration |
+| **`windows_local/`** | Windows Desktop Access demo | [Configure access for local Windows users](https://goteleport.com/docs/enroll-resources/desktop-access/getting-started/) |
+| **`machineid_ansible/`** | Machine ID automation demo | [Machine ID with Ansible](https://goteleport.com/docs/enroll-resources/machine-id/access-guides/ansible/) |
+
+### **🏢 Environments** - Complete Integrated Deployments
+| Environment | Purpose |
+|-------------|---------|
+| **`dev/`** | Complete development environment |
+| **`prod/`** | Complete production environment |
+
+### **☁️ Control Plane** - Teleport Cluster Deployment Options
+| Deployment Type | Purpose |
+|-----------------|---------|
+| **`eks/`** | Kubernetes-based clusters |
+| **`linux/`** | Single-node clusters |
+| **`linux_proxypeers/`** | Proxy peering architecture |
 
 ---
 
