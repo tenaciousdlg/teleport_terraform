@@ -1,3 +1,4 @@
+# aws region to deploy cluster into 
 variable "region" {
   default = "us-east-2" # replace with your preferred aws region
   type    = string
@@ -21,5 +22,5 @@ variable "user" {
 variable "ver_cluster" {
   description = "Version number of kubernetes to run"
   type        = string
-  default     = "1.31"
+  default     = "1.33"
 }

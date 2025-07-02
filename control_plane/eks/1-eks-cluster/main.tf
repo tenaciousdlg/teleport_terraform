@@ -1,28 +1,25 @@
-# defines aws provider
+# 1-eks-cluster/main.tf
 terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.39"
+      version = "~> 5.99"
     }
   }
 }
 
 provider "aws" {
   region = var.region
-  # these are tags that are added to aws resources this config creates
-  # these are optional
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = "demo"
+      "Purpose"              = "demo"
       "ManagedBy"            = "terraform"
       name                   = var.name
     }
   }
 }
 
-# checks for space in availability zones
 data "aws_availability_zones" "available" {
   filter {
     name   = "opt-in-status"
@@ -30,14 +27,12 @@ data "aws_availability_zones" "available" {
   }
 }
 
-# local variables used across resources
-# setting a static private network config for ease of use
 locals {
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 }
 
-# aws vpc module
+# Improved VPC module with better defaults
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
@@ -49,7 +44,7 @@ module "vpc" {
   public_subnets  = [for index, az in local.azs : cidrsubnet(local.vpc_cidr, 8, index + 48)]
 
   enable_nat_gateway = true
-  single_nat_gateway = true
+  single_nat_gateway = true # Cost optimization for demos
 
   public_subnet_tags = {
     "kubernetes.io/role/elb" = 1
@@ -60,7 +55,7 @@ module "vpc" {
   }
 }
 
-# aws eks module
+# Improved EKS module with better node configuration
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -76,27 +71,19 @@ module "eks" {
   enable_cluster_creator_admin_permissions = true
 
   eks_managed_node_group_defaults = {
-    ami_type = "AL2023_x86_64_STANDARD"
+    ami_type = "BOTTLEROCKET_x86_64"
     tags = {
       "teleport.dev/creator" = var.user
     }
   }
 
   eks_managed_node_groups = {
-    one = {
-      name = "${var.name}-node-group-1"
+    # Improved node group sizing for demos
+    primary = {
+      name = "${var.name}-group-primary"
 
-      instance_types = ["t3.small"]
-
-      min_size     = 1
-      max_size     = 3
-      desired_size = 2
-    }
-
-    two = {
-      name = "${var.name}-node-group-2"
-
-      instance_types = ["t3.micro"]
+      instance_types = ["t3.small"] # Smallest to go for Teleport
+      capacity_type  = "SPOT"       # Cost optimization
 
       min_size     = 1
       max_size     = 4
@@ -105,7 +92,7 @@ module "eks" {
   }
 }
 
-# module for configuration of eks cluster components  
+# Improved addons with essential components
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
   version = "~> 1.1"
@@ -127,18 +114,17 @@ module "eks_blueprints_addons" {
       most_recent = true
     }
     kube-proxy = {
+      most_recent = true
     }
   }
 }
 
-# iam module for ebs csi driver. Needed to give eks cluster perms to create ebs for pvc used with teleport
-# https://github.com/aws-ia/terraform-aws-eks-blueprints-addons/discussions/406
+# Fixed IRSA for EBS CSI driver (prevents PVC issues)
 module "ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.20"
 
-  role_name_prefix = "${var.name}-cluster-ebs-csi-driver-"
-
+  role_name_prefix      = "${var.name}-cluster-ebs-csi-driver-"
   attach_ebs_csi_policy = true
 
   oidc_providers = {

@@ -1,32 +1,51 @@
-variable "cluster_name" {
-  description = "name of your teleport cluster (e.g. teleport.example.com)"
-  type        = string
-}
-
-variable "domain_name" {
-  description = "domain name to query for DNS"
-  default     = "foo.com"
-  type        = string
-}
-
-variable "eks_cluster" {
-  description = "name of the eks cluster created in the first step"
-  default     = "test-cluster"
-  type        = string
-}
-
-variable "email" {
-  description = "email for teleport admin. used with ACME cert"
-  type        = string
-}
+# 2-kubernetes-config/variables.tf
 
 variable "region" {
-  description = "aws region"
+  description = "AWS region"
   type        = string
   default     = "us-east-2"
 }
 
-variable "teleport_ver" {
-  description = "full version of teleport (e.g. 17.0.0)"
+variable "cluster_name" {
+  description = "Name of your Teleport cluster (e.g. teleport.example.com)"
   type        = string
+}
+
+variable "domain_name" {
+  description = "Domain name for DNS records (leave empty to skip DNS setup)"
+  type        = string
+  default     = ""
+}
+
+variable "email" {
+  description = "Email for Teleport admin and ACME certificate"
+  type        = string
+}
+
+variable "teleport_ver" {
+  description = "Teleport version to deploy (e.g. 17.0.0)"
+  type        = string
+}
+
+variable "okta_metadata_url" {
+  description = "Okta SAML metadata URL"
+  type        = string
+}
+
+variable "okta_preview_metadata_url" {
+  description = "Okta preview SAML metadata URL (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_okta_preview" {
+  description = "Whether to enable the Okta preview SAML connector"
+  type        = bool
+  default     = false
+}
+
+variable "enable_access_lists" {
+  description = "Whether to enable access lists (may not be available in all Teleport versions)"
+  type        = bool
+  default     = false
 }

@@ -1,0 +1,551 @@
+# 2-kubernetes-config/main.tf
+# Complete implementation that eliminates manual coordination and fixes CRD issues
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.99"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
+    }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = "~> 1.14"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.10"
+    }
+  }
+}
+
+# Read EKS cluster info from remote state (NO MANUAL COORDINATION)
+data "terraform_remote_state" "eks" {
+  backend = "local" # Change to "s3" if using remote backend
+  config = {
+    path = "../1-eks-cluster/terraform.tfstate"
+    # For S3 backend:
+    # bucket = "your-state-bucket"
+    # key    = "eks-cluster/terraform.tfstate" 
+    # region = var.region
+  }
+}
+
+# Auto-configure providers using remote state
+provider "aws" {
+  region = var.region
+  default_tags {
+    tags = {
+      "teleport.dev/creator" = var.email
+      "tier"                 = "dev"
+      "ManagedBy"            = "terraform"
+    }
+  }
+}
+
+# Auto-configure Kubernetes provider
+provider "kubernetes" {
+  host                   = data.terraform_remote_state.eks.outputs.cluster_endpoint
+  cluster_ca_certificate = base64decode(data.terraform_remote_state.eks.outputs.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1"
+    args        = ["eks", "get-token", "--cluster-name", data.terraform_remote_state.eks.outputs.cluster_name]
+    command     = "aws"
+  }
+}
+
+# Auto-configure Helm provider
+provider "helm" {
+  kubernetes {
+    host                   = data.terraform_remote_state.eks.outputs.cluster_endpoint
+    cluster_ca_certificate = base64decode(data.terraform_remote_state.eks.outputs.cluster_certificate_authority_data)
+    exec {
+      api_version = "client.authentication.k8s.io/v1"
+      args        = ["eks", "get-token", "--cluster-name", data.terraform_remote_state.eks.outputs.cluster_name]
+      command     = "aws"
+    }
+  }
+}
+
+# Auto-configure kubectl provider
+provider "kubectl" {
+  host                   = data.terraform_remote_state.eks.outputs.cluster_endpoint
+  cluster_ca_certificate = base64decode(data.terraform_remote_state.eks.outputs.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1"
+    args        = ["eks", "get-token", "--cluster-name", data.terraform_remote_state.eks.outputs.cluster_name]
+    command     = "aws"
+  }
+}
+
+# Use cluster info from remote state
+locals {
+  cluster_name = data.terraform_remote_state.eks.outputs.cluster_name
+}
+
+# Create namespace
+resource "kubernetes_namespace" "teleport_cluster" {
+  metadata {
+    name = "teleport-cluster"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "baseline"
+    }
+  }
+}
+
+# License secret (conditional)
+resource "kubernetes_secret" "license" {
+  count = fileexists("${path.module}/license.pem") ? 1 : 0
+
+  metadata {
+    name      = "license"
+    namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+  }
+  data = {
+    "license.pem" = file("${path.module}/license.pem")
+  }
+  type = "Opaque"
+}
+
+# Storage class configuration
+resource "kubernetes_annotations" "gp2" {
+  api_version = "storage.k8s.io/v1"
+  kind        = "StorageClass"
+  force       = true
+
+  metadata {
+    name = "gp2"
+  }
+  annotations = {
+    "storageclass.kubernetes.io/is-default-class" = "true"
+  }
+}
+
+# Teleport Helm release (SAFE for updates)
+resource "helm_release" "teleport_cluster" {
+  name       = "teleport-cluster"
+  namespace  = kubernetes_namespace.teleport_cluster.metadata[0].name
+  repository = "https://charts.releases.teleport.dev"
+  chart      = "teleport-cluster"
+  version    = var.teleport_ver
+  wait       = true
+  timeout    = 300
+
+  values = [
+    jsonencode({
+      clusterName       = var.cluster_name
+      proxyListenerMode = "multiplex"
+      acme              = true
+      acmeEmail         = var.email
+      enterprise        = fileexists("${path.module}/license.pem")
+
+      labels = { tier = "demo" }
+
+      operator       = { enabled = true }
+      authentication = { type = "saml" }
+      persistence    = { enabled = true }
+    })
+  ]
+
+  depends_on = [
+    kubernetes_secret.license
+  ]
+}
+
+# Wait for operator to be ready
+resource "time_sleep" "wait_for_operator" {
+  depends_on      = [helm_release.teleport_cluster]
+  create_duration = "60s"
+}
+
+# =====================================================
+# TELEPORT CONFIGURATION RESOURCES
+# =====================================================
+
+# SAML Connectors
+resource "kubectl_manifest" "saml_connector_okta" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v2"
+    kind       = "TeleportSAMLConnector"
+    metadata = {
+      name      = "okta-dlg"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      acs = "https://${var.cluster_name}:443/v1/webapi/saml/acs/okta"
+      attributes_to_roles = [
+        { name = "groups", value = "engineers", roles = ["access", "auditor", "dev-access", "editor", "group-access", "reviewer", "prod-access"] }
+      ]
+      display                 = "okta dlg"
+      entity_descriptor_url   = var.okta_metadata_url
+      service_provider_issuer = "https://${var.cluster_name}/sso/saml/metadata"
+    }
+  })
+}
+
+resource "kubectl_manifest" "saml_connector_okta_preview" {
+  count      = var.enable_okta_preview ? 1 : 0
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v2"
+    kind       = "TeleportSAMLConnector"
+    metadata = {
+      name      = "okta-preview"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      acs = "https://${var.cluster_name}/v1/webapi/saml/acs/okta-preview"
+      attributes_to_roles = [
+        { name = "groups", value = "Solutions-Engineering", roles = ["auditor", "access", "editor"] }
+      ]
+      display                 = "okta"
+      entity_descriptor_url   = var.okta_preview_metadata_url
+      service_provider_issuer = "https://${var.cluster_name}/sso/saml/metadata"
+    }
+  })
+}
+
+# Login Rules
+resource "kubectl_manifest" "login_rule_okta" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportLoginRule"
+    metadata = {
+      name      = "okta-preferred-login-rule"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      priority = 0
+      traits_map = {
+        logins = [
+          "external.logins",
+          "strings.lower(external.username)"
+        ]
+        groups = ["external.groups"]
+      }
+      traits_expression = <<-EOT
+        external.put("logins",
+          choose(
+            option(external.groups.contains("okta"), "okta"),
+            option(true, "local")
+          )
+        )
+      EOT
+    }
+  })
+}
+
+# Roles
+resource "kubectl_manifest" "role_dev_access" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "dev-access"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        app_labels = {
+          tier      = ["dev"]
+          "aws/env" = ["dev"]
+        }
+        aws_role_arns  = ["{{external.aws_role_arns}}"]
+        db_labels      = { tier = ["dev"] }
+        db_names       = ["{{external.db_names}}", "*"]
+        db_roles       = ["{{external.db_roles}}", "dbadmin"]
+        db_users       = ["{{external.db_users}}", "postgres", "reader"]
+        desktop_groups = ["Administrators"]
+        impersonate = {
+          users = ["Db"]
+          roles = ["Db"]
+        }
+        join_sessions = [
+          {
+            kinds = ["k8s", "ssh"]
+            modes = ["moderator", "observer"]
+            name  = "Join dev sessions"
+            roles = ["dev-access"]
+          }
+        ]
+        kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
+        kubernetes_labels = { tier = "dev" }
+        kubernetes_resources = [
+          { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
+        ]
+        logins = [
+          "{{external.logins}}",
+          "{{email.local(external.username)}}",
+          "{{email.local(external.email)}}",
+          "ubuntu", "ec2-user"
+        ]
+        node_labels = { tier = "dev" }
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+        windows_desktop_labels = { tier = "dev" }
+        windows_desktop_logins = [
+          "{{external.windows_logins}}",
+          "{{email.local(external.username)}}",
+          "Administrator"
+        ]
+      }
+      options = {
+        create_db_user                 = true
+        create_desktop_user            = true
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        desktop_clipboard              = true
+        desktop_directory_sharing      = true
+        max_session_ttl                = "8h0m0s"
+        pin_source_ip                  = false
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "role_prod_access" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "prod-access"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        app_labels = {
+          tier      = ["prod", "dev"]
+          "aws/env" = ["prod", "dev"]
+        }
+        aws_role_arns = ["{{external.aws_role_arns}}"]
+        db_labels = {
+          tier = ["prod"],
+          tier = ["dev"]
+        }
+        db_names       = ["{{external.db_names}}", "*"]
+        db_roles       = ["{{external.db_roles}}", "dbadmin"]
+        db_users       = ["{{external.db_users}}", "postgres", "reader", "writer"]
+        desktop_groups = ["Administrators"]
+        impersonate = {
+          users = ["Db"]
+          roles = ["Db"]
+        }
+        join_sessions = [
+          {
+            kinds = ["k8s", "ssh"]
+            modes = ["moderator", "observer"]
+            name  = "Join prod sessions"
+            roles = ["*"]
+          }
+        ]
+        kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
+        kubernetes_labels = { "*" = "*" }
+        kubernetes_resources = [
+          { kind = "*", name = "*", namespace = "prod", verbs = ["*"] }
+        ]
+        logins = [
+          "{{external.logins}}",
+          "{{email.local(external.username)}}",
+          "{{email.local(external.email)}}",
+          "ubuntu", "ec2-user"
+        ]
+        node_labels = {
+          tier = ["prod"],
+          tier = ["dev"]
+        }
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+        windows_desktop_labels = {
+          tier = ["prod"],
+          tier = ["dev"]
+        }
+        windows_desktop_logins = [
+          "{{external.windows_logins}}",
+          "{{email.local(external.username)}}",
+          "Administrator"
+        ]
+      }
+      options = {
+        create_db_user                 = true
+        create_desktop_user            = true
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        desktop_clipboard              = true
+        desktop_directory_sharing      = true
+        max_session_ttl                = "2h0m0s"
+        pin_source_ip                  = false
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "role_reviewer" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "reviewer"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        review_requests = {
+          preview_as_roles = ["access", "prod-access"]
+          roles            = ["access", "prod-access"]
+        }
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "role_requester" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "requester"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        request = {
+          roles           = ["prod-access"]
+          search_as_roles = ["access", "prod-access"]
+        }
+      }
+    }
+  })
+}
+
+# Access Lists 
+# Note: Access list CRD may not be available in all Teleport versions
+# If this fails, remove this resource and apply access lists manually
+resource "kubectl_manifest" "access_list_support_engineers" {
+  count      = var.enable_access_lists ? 1 : 0
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportAccessList"
+    metadata = {
+      name      = "support-engineers"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      title       = "Production access for support engineers"
+      description = "Use this Access List to grant access to production to your engineers enrolled in the support rotation."
+      audit = {
+        recurrence = {
+          frequency = "6months"
+        }
+      }
+      owners = [
+        {
+          description = "manager of NA support team"
+          name        = "alice"
+        }
+      ]
+      ownership_requires = {
+        roles = ["manager"]
+      }
+      grants = {
+        roles = ["dev-access"]
+      }
+      membership_requires = {
+        roles = ["engineer"]
+      }
+    }
+  })
+}
+
+# =====================================================
+# DNS AND NETWORKING
+# =====================================================
+
+# Get service info for DNS
+data "kubernetes_service" "teleport_cluster" {
+  depends_on = [helm_release.teleport_cluster]
+
+  metadata {
+    name      = helm_release.teleport_cluster.name
+    namespace = helm_release.teleport_cluster.namespace
+  }
+}
+
+# Route53 DNS records (conditional)
+data "aws_route53_zone" "main" {
+  count = var.domain_name != "" ? 1 : 0
+  name  = var.domain_name
+}
+
+resource "aws_route53_record" "cluster_endpoint" {
+  count = var.domain_name != "" ? 1 : 0
+
+  zone_id = data.aws_route53_zone.main[0].zone_id
+  name    = var.cluster_name
+  type    = "CNAME"
+  ttl     = "300"
+  records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
+}
+
+resource "aws_route53_record" "wild_cluster_endpoint" {
+  count = var.domain_name != "" ? 1 : 0
+
+  zone_id = data.aws_route53_zone.main[0].zone_id
+  name    = "*.${var.cluster_name}"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
+}
+
+# =====================================================
+# OUTPUTS
+# =====================================================
+
+output "teleport_url" {
+  description = "Teleport demo URL"
+  value       = var.domain_name != "" ? "https://${var.cluster_name}" : "https://${try(data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname, "pending")}"
+}
+
+output "teleport_version" {
+  description = "Deployed Teleport version"
+  value       = var.teleport_ver
+}
+
+output "cluster_name" {
+  description = "Teleport cluster name"
+  value       = var.cluster_name
+}
+
+output "eks_cluster_name" {
+  description = "EKS cluster name from remote state"
+  value       = local.cluster_name
+}
