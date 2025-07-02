@@ -403,6 +403,7 @@ COMMANDS:
   $0 update-teleport VERSION    Update only Teleport (leaves EKS untouched)
   $0 rollback                   Rollback Teleport to previous version
   $0 status                     Show current versions and URLs
+  $0 detailed_status            Show detailed status including pod health
   $0 versions                   Check latest available Teleport versions
   $0 validate                   Validate environment and dependencies
   $0 cleanup                    Safely destroy everything

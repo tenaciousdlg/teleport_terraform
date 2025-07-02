@@ -1,0 +1,13 @@
+region       = "us-east-2"
+domain_name  = "teleportdemo.com"
+email        = "dlg@goteleport.com"
+teleport_ver = "17.5.2"
+cluster_name = "presales.teleportdemo.com"
+# Required for DLG SAML
+okta_metadata_url = "https://dev-94466015.okta.com/app/exkhxwe3ncnGyjry55d7/sso/saml/metadata"
+
+# Optional Okta Preview (set to true if you want it)
+enable_okta_preview       = true
+okta_preview_metadata_url = "https://gravitational-preview.oktapreview.com/app/exkftll0o8X4SCO6k1d7/sso/saml/metadata"
+# Controls optional features
+enable_access_lists       = false
