@@ -6,6 +6,12 @@ variable "proxy_address" {
   description = "hostname of the teleport environment"
 }
 
+variable "proxy_address_port" {
+  type        = string
+  description = "HTTPS port of the Teleport Proxy Service"
+  default     = "443"
+}
+
 variable "aws_region" {
   type        = string
   description = "region to deploy AWS resources"
