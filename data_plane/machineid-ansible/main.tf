@@ -28,7 +28,7 @@ provider "aws" {
 }
 
 provider "teleport" {
-  addr               = "${var.proxy_address}:443"
+  addr               = "${var.proxy_address}:${var.proxy_address_port}"
 }
 
 provider "random" {
