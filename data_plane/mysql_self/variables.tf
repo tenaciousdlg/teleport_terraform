@@ -1,6 +1,12 @@
 variable "proxy_address" {
   type        = string
-  description = "Host and HTTPS port of the Teleport Proxy Service"
+  description = "Host of the Teleport Proxy Service"
+}
+
+variable "proxy_address_port" {
+  type        = string
+  description = "HTTPS port of the Teleport Proxy Service"
+  default     = "443"
 }
 
 variable "aws_region" {
@@ -15,7 +21,7 @@ variable "teleport_version" {
 
 variable "user" {
   type        = string
-  description = "username assgined in description for AWS resources"
+  description = "username assigned in description for AWS resources"
 }
 
 variable "cidr_vpc" {
