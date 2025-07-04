@@ -26,7 +26,7 @@ provider "aws" {
 }
 # allows creation of teleport resources
 provider "teleport" {
-  addr = "${var.proxy_address}:443"
+  addr = "${var.proxy_address}:${var.proxy_address_port}"
 }
 # used for custom CA per https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/#step-24-create-a-certificatekey-pair
 provider "tls" {
