@@ -37,12 +37,14 @@ db_service:
   resources:
     - labels:
         "tier": "${env}"
+        "team": "engineering"
 auth_service:
   enabled: "no"
 ssh_service:
   enabled: "yes"
   labels:
     "tier": "${env}"
+    "team": "${team}"
 proxy_service:
   enabled: "no"
 app_service:

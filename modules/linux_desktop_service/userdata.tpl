@@ -48,6 +48,7 @@ ssh_service:
     period: 1m0s
   labels:
     "tier": "${env}"
+    "team": "engineering"
   enhanced_recording:
     enabled: "false"
 windows_desktop_service:

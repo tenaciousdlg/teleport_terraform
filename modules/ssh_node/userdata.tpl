@@ -23,6 +23,7 @@ ssh_service:
     enabled: true
   labels:
     tier: ${env}
+    team: engineering
     os: amzn23
   commands:
     - name: "hostname"

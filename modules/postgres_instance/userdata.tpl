@@ -71,10 +71,12 @@ db_service:
   resources:
     - labels:
         "tier": "${env}"
+        "team": "engineering"
 ssh_service:
   enabled: true
   labels:
     "tier": "${env}"
+    "team": "engineering"
 auth_service:
   enabled: false
 proxy_service:

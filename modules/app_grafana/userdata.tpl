@@ -69,6 +69,7 @@ ssh_service:
   enabled: true
   labels:
     tier: "${env}"
+    team: engineering
   commands:
     - name: "hostname"
       command: ["/bin/hostname"]
