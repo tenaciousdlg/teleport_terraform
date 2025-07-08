@@ -1,7 +1,6 @@
 #!/bin/bash
 #cloud-config
-set -euo pipefail
-bash -x 
+set -euxo pipefail
 
 hostnamectl set-hostname "${env}-ansible"
 
@@ -32,6 +31,8 @@ ssh_service:
   labels:
     tier: ${env}
     team: engineering
+  enhanced_recording:
+    enabled: true
 auth_service:
   enabled: false
 proxy_service:
@@ -154,6 +155,6 @@ EOF
 
 chown -R ec2-user:ec2-user /home/ec2-user/ansible
 # update perissions for teleport group
-chmod 750 -R /opt/machine-id/
+chmod 750 -R /opt/machine-id/*
 systemctl enable tbot
 systemctl restart tbot
