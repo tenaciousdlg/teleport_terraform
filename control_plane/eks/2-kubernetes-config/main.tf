@@ -187,7 +187,7 @@ resource "kubectl_manifest" "saml_connector_okta" {
     spec = {
       acs = "https://${var.cluster_name}:443/v1/webapi/saml/acs/okta"
       attributes_to_roles = [
-        { name = "groups", value = "engineers", roles = ["access", "auditor", "dev-access", "editor", "group-access", "reviewer", "prod-access"] }
+        { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "reviewer", "prod-access"] }
       ]
       display                 = "okta dlg"
       entity_descriptor_url   = var.okta_metadata_url
