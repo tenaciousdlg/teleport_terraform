@@ -1,0 +1,115 @@
+#!/bin/bash
+set -euxo
+#########################################################
+# RDS MySQL Teleport Agent
+#########################################################
+sudo hostnamectl set-hostname "rds-mysql"
+sudo apt update && sudo apt upgrade -y 
+sudo apt install -y mysql-client jq awscli
+
+########################################################
+# Teleport Installation 
+########################################################
+curl https://goteleport.com/static/install.sh | bash -s "${teleport_version}" "enterprise"
+
+#########################################################
+# Wait for RDS to be available and configure MySQL
+#########################################################
+echo "Waiting for RDS instance to be available..."
+
+# Create MySQL config file with password to avoid bash escaping issues
+cat > /tmp/mysql_config.cnf << 'EOF'
+[client]
+host=${rds_endpoint}
+port=3306
+user=admin
+password=${rds_password}
+EOF
+
+# Test connection with timeout
+for i in {1..20}; do
+    echo "Connection attempt $i/20..."
+    if mysql --defaults-file=/tmp/mysql_config.cnf -e "SELECT 1;" 2>/dev/null; then
+        echo "✓ RDS connection successful"
+        break
+    fi
+    if [ $i -eq 20 ]; then
+        echo "✗ Failed to connect to RDS after 20 attempts"
+        exit 1
+    fi
+    sleep 30
+done
+
+echo "Configuring MySQL for Teleport auto user provisioning..."
+
+# Configure MySQL for auto user provisioning following the guide
+mysql --defaults-file=/tmp/mysql_config.cnf << 'SQLEOF'
+-- Create teleport-admin user with AWS IAM authentication
+CREATE USER 'teleport-admin' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';
+
+-- Grant required permissions for auto user provisioning
+GRANT SELECT ON mysql.role_edges TO 'teleport-admin';
+GRANT PROCESS, ROLE_ADMIN, CREATE USER ON *.* TO 'teleport-admin';
+
+-- Create teleport database/schema (if not exists)
+CREATE DATABASE IF NOT EXISTS `teleport`;
+
+-- Grant routine permissions for stored procedures
+GRANT ALTER ROUTINE, CREATE ROUTINE, EXECUTE ON `teleport`.* TO 'teleport-admin';
+
+-- Flush privileges to apply changes
+FLUSH PRIVILEGES;
+
+-- Verify the user was created
+SELECT user, host, plugin FROM mysql.user WHERE user = 'teleport-admin';
+SQLEOF
+
+if [ $? -eq 0 ]; then
+    echo "✓ MySQL auto user provisioning configuration completed successfully"
+else
+    echo "✗ MySQL configuration failed"
+    exit 1
+fi
+
+# Clean up credentials file
+rm -f /tmp/mysql_config.cnf
+
+#########################################################
+# Teleport Configuration
+#########################################################
+sudo cat <<-EOF > /etc/teleport.yaml
+version: v3
+teleport:
+  data_dir: "/var/lib/teleport"
+  proxy_server: "${proxy_address}:443"
+  auth_token: "${token}"
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: text
+
+db_service:
+  enabled: true
+  resources:
+   - labels:
+       "tier": "dev"
+
+auth_service:
+  enabled: "no"
+
+ssh_service:
+  enabled: "true"
+  labels:
+    tier: dev
+    os: ubuntu
+
+proxy_service:
+  enabled: "no"
+
+app_service:
+  enabled: "no"
+EOF
+
+systemctl enable teleport
+systemctl restart teleport
