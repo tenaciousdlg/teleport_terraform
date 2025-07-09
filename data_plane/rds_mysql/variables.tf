@@ -1,17 +1,12 @@
 variable "region" {
   description = "AWS region to deploy MySQL in"
   type        = string
+  default     = "us-east-2"
 }
 
 variable "proxy_address" {
   type        = string
   description = "Host of the Teleport Proxy Service"
-}
-
-variable "aws_region" {
-  type        = string
-  description = "Region in which to deploy AWS resources"
-  default     = "us-east-2"
 }
 
 variable "teleport_version" {

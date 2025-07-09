@@ -1,49 +1,62 @@
 #!/bin/bash
-set -euxo
-#########################################################
-# RDS MySQL Teleport Agent
-#########################################################
-sudo hostnamectl set-hostname "rds-mysql"
-sudo apt update && sudo apt upgrade -y 
-sudo apt install -y mysql-client jq awscli
+set -euxo pipefail
+
+# Set hostname
+hostnamectl set-hostname "${env}-rds-mysql-agent"
+
+# Update system and install dependencies
+dnf update -y
+dnf install -y mariadb105 jq
 
 ########################################################
 # Teleport Installation 
 ########################################################
-curl https://goteleport.com/static/install.sh | bash -s "${teleport_version}" "enterprise"
+curl https://goteleport.com/static/install.sh | bash -s "${teleport_version}" enterprise
 
 #########################################################
 # Wait for RDS to be available and configure MySQL
 #########################################################
 echo "Waiting for RDS instance to be available..."
 
-# Create MySQL config file with password to avoid bash escaping issues
-cat > /tmp/mysql_config.cnf << 'EOF'
-[client]
-host=${rds_endpoint}
-port=3306
-user=admin
-password=${rds_password}
-EOF
-
-# Test connection with timeout
-for i in {1..20}; do
-    echo "Connection attempt $i/20..."
-    if mysql --defaults-file=/tmp/mysql_config.cnf -e "SELECT 1;" 2>/dev/null; then
-        echo "✓ RDS connection successful"
+# Wait for RDS instance to be ready
+echo "Checking RDS instance status..."
+RDS_INSTANCE_ID="${rds_instance_id}"
+for i in {1..30}; do
+    echo "Status check attempt $i/30..."
+    STATUS=$(aws rds describe-db-instances --db-instance-identifier "$RDS_INSTANCE_ID" --region "${region}" --query 'DBInstances[0].DBInstanceStatus' --output text)
+    if [ "$STATUS" = "available" ]; then
+        echo "✓ RDS instance is available"
         break
     fi
-    if [ $i -eq 20 ]; then
-        echo "✗ Failed to connect to RDS after 20 attempts"
+    if [ $i -eq 30 ]; then
+        echo "✗ RDS instance not available after 30 attempts"
         exit 1
     fi
     sleep 30
 done
 
+# Extract hostname without port
+RDS_HOSTNAME=$(echo "${rds_endpoint}" | cut -d':' -f1)
+
+# Test direct connection with password first
+echo "Testing direct RDS connection with password..."
+for i in {1..10}; do
+    echo "Connection attempt $i/10..."
+    if mysql -h "$RDS_HOSTNAME" -u admin -p"${rds_password}" -e "SELECT 1;" 2>/dev/null; then
+        echo "✓ Direct RDS connection successful"
+        break
+    fi
+    if [ $i -eq 10 ]; then
+        echo "✗ Failed to connect to RDS after 10 attempts"
+        exit 1
+    fi
+    sleep 15
+done
+
 echo "Configuring MySQL for Teleport auto user provisioning..."
 
-# Configure MySQL for auto user provisioning following the guide
-mysql --defaults-file=/tmp/mysql_config.cnf << 'SQLEOF'
+# Configure MySQL for auto user provisioning with direct RDS access
+mysql -h "$RDS_HOSTNAME" -u admin -p"${rds_password}" << 'SQLEOF'
 -- Create teleport-admin user with AWS IAM authentication
 CREATE USER 'teleport-admin' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';
 
@@ -71,13 +84,10 @@ else
     exit 1
 fi
 
-# Clean up credentials file
-rm -f /tmp/mysql_config.cnf
-
 #########################################################
 # Teleport Configuration
 #########################################################
-sudo cat <<-EOF > /etc/teleport.yaml
+cat <<EOF > /etc/teleport.yaml
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
@@ -93,16 +103,16 @@ db_service:
   enabled: true
   resources:
    - labels:
-       "tier": "dev"
+       "tier": "${env}"
 
 auth_service:
   enabled: "no"
 
 ssh_service:
-  enabled: "true"
+  enabled: "yes"
   labels:
-    tier: dev
-    os: ubuntu
+    tier: "${env}"
+    os: amzn23
 
 proxy_service:
   enabled: "no"

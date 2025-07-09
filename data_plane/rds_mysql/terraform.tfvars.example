@@ -1,6 +1,6 @@
 proxy_address    = "your-teleport-cluster.com"
-aws_region       = "us-east-2"
-teleport_version = "17.4.8"
+region           = "us-east-2"
+teleport_version = "17.5.4"
 user             = "your-username"
 env              = "dev"
 
