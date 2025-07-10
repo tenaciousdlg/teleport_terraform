@@ -61,7 +61,7 @@ module "rds_mysql" {
   region                = var.region
   vpc_id                = module.network.vpc_id
   db_subnet_group_name  = module.network.db_subnet_group_name
-  subnet_id             = module.network.public_subnet_id
+  subnet_id             = module.network.subnet_id
   security_group_ids    = [module.network.security_group_id]
   ami_id                = data.aws_ami.linux.id
 }
