@@ -6,7 +6,7 @@ hostnamectl set-hostname "${env}-rds-mysql-agent"
 
 # Update system and install dependencies
 dnf update -y
-dnf install -y mariadb105 jq
+dnf install -y mariadb105 jq nmap-ncat
 
 ########################################################
 # Teleport Installation 
@@ -42,9 +42,15 @@ RDS_HOSTNAME=$(echo "${rds_endpoint}" | cut -d':' -f1)
 echo "Testing direct RDS connection with password..."
 for i in {1..10}; do
     echo "Connection attempt $i/10..."
-    if mysql -h "$RDS_HOSTNAME" -u admin -p"${rds_password}" -e "SELECT 1;" 2>/dev/null; then
+    if mysql -h "$RDS_HOSTNAME" -u admin -p'${rds_password}' --ssl -e "SELECT 1;" 2>/dev/null; then
         echo "✓ Direct RDS connection successful"
         break
+    else
+        echo "MySQL connection failed. Testing network connectivity..."
+        # Test if we can reach the RDS endpoint
+        nc -zv "$RDS_HOSTNAME" 3306 2>&1 || echo "Network connectivity test failed"
+        # Show any MySQL error
+        mysql -h "$RDS_HOSTNAME" -u admin -p'${rds_password}' --ssl -e "SELECT 1;" 2>&1 | head -3
     fi
     if [ $i -eq 10 ]; then
         echo "✗ Failed to connect to RDS after 10 attempts"
@@ -56,7 +62,7 @@ done
 echo "Configuring MySQL for Teleport auto user provisioning..."
 
 # Configure MySQL for auto user provisioning with direct RDS access
-mysql -h "$RDS_HOSTNAME" -u admin -p"${rds_password}" << 'SQLEOF'
+mysql -h "$RDS_HOSTNAME" -u admin -p'${rds_password}' --ssl << 'SQLEOF'
 -- Create teleport-admin user with AWS IAM authentication
 CREATE USER 'teleport-admin' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';
 
@@ -69,6 +75,21 @@ CREATE DATABASE IF NOT EXISTS `teleport`;
 
 -- Grant routine permissions for stored procedures
 GRANT ALTER ROUTINE, CREATE ROUTINE, EXECUTE ON `teleport`.* TO 'teleport-admin';
+
+-- Create MySQL roles that Teleport expects to use
+CREATE ROLE IF NOT EXISTS 'dbadmin';
+CREATE ROLE IF NOT EXISTS 'reader';
+CREATE ROLE IF NOT EXISTS 'writer';
+
+-- Grant permissions to these roles (RDS-compatible privileges)
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, INDEX, CREATE TEMPORARY TABLES, LOCK TABLES, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EXECUTE, TRIGGER, EVENT ON *.* TO 'dbadmin';
+GRANT SELECT, SHOW VIEW ON *.* TO 'reader';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE ON *.* TO 'writer';
+
+-- Allow teleport-admin to grant these roles to auto-provisioned users
+GRANT 'dbadmin' TO 'teleport-admin' WITH ADMIN OPTION;
+GRANT 'reader' TO 'teleport-admin' WITH ADMIN OPTION;
+GRANT 'writer' TO 'teleport-admin' WITH ADMIN OPTION;
 
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;

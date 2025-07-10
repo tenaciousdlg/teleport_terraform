@@ -19,6 +19,7 @@ locals {
 resource "random_password" "db_password" {
   length  = 32
   special = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 resource "aws_db_instance" "mysql" {
@@ -119,7 +120,16 @@ resource "aws_iam_role_policy" "ec2_rds_policy" {
           "rds-db:connect"
         ]
         Resource = [
-          "arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.mysql.identifier}/teleport-admin"
+          "arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_instance.mysql.resource_id}/teleport-admin"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "rds:DescribeDBInstances"
+        ]
+        Resource = [
+          "arn:aws:rds:${var.region}:${data.aws_caller_identity.current.account_id}:db:${aws_db_instance.mysql.identifier}"
         ]
       }
     ]
