@@ -1,6 +1,6 @@
-# 2-kubernetes-config/main.tf
-# Complete implementation that eliminates manual coordination and fixes CRD issues
-
+# =====================================================
+# PROVIDER CONFIGURATION
+# =====================================================
 terraform {
   required_providers {
     aws = {
@@ -94,10 +94,18 @@ locals {
   cluster_name = data.terraform_remote_state.eks.outputs.cluster_name
 }
 
+# =====================================================
+# CORE KUBERNETES RESOURCES
+# =====================================================
+
 # Create namespace
+
 resource "kubernetes_namespace" "teleport_cluster" {
   metadata {
     name = "teleport-cluster"
+    annotations = {
+      "kubectl.kubernetes.io/last-applied-configuration" = ""
+    }
     labels = {
       "pod-security.kubernetes.io/enforce" = "baseline"
     }
@@ -118,21 +126,299 @@ resource "kubernetes_secret" "license" {
   type = "Opaque"
 }
 
-# Storage class configuration
-resource "kubernetes_annotations" "gp2" {
-  api_version = "storage.k8s.io/v1"
-  kind        = "StorageClass"
-  force       = true
+# =====================================================
+# AWS BACKEND INFRASTRUCTURE (DYNAMODB & S3)
+# =====================================================
 
-  metadata {
-    name = "gp2"
+# DynamoDB tables for Teleport backend
+resource "aws_dynamodb_table" "teleport_backend" {
+  name         = "${var.cluster_name}-backend"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "HashKey"
+  range_key    = "FullPath"
+
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+
+  attribute {
+    name = "HashKey"
+    type = "S"
   }
-  annotations = {
-    "storageclass.kubernetes.io/is-default-class" = "true"
+
+  attribute {
+    name = "FullPath"
+    type = "S"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-backend"
   }
 }
 
-# Teleport Helm release (SAFE for updates)
+resource "aws_dynamodb_table" "teleport_events" {
+  name         = "${var.cluster_name}-events"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "SessionID"
+  range_key    = "EventIndex"
+
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+
+  attribute {
+    name = "SessionID"
+    type = "S"
+  }
+
+  attribute {
+    name = "EventIndex"
+    type = "N"
+  }
+
+  attribute {
+    name = "CreatedAtDate"
+    type = "S"
+  }
+
+  attribute {
+    name = "CreatedAt"
+    type = "N"
+  }
+
+  global_secondary_index {
+    name            = "timesearch"
+    hash_key        = "CreatedAtDate"
+    range_key       = "CreatedAt"
+    projection_type = "ALL"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  ttl {
+    enabled        = true
+    attribute_name = "Expires"
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-events"
+  }
+}
+
+# S3 bucket for session recordings
+resource "aws_s3_bucket" "session_recordings" {
+  bucket = "${var.cluster_name}-session-recordings-${data.aws_caller_identity.current.account_id}"
+
+  tags = {
+    Name = "${var.cluster_name}-session-recordings"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "session_recordings" {
+  bucket = aws_s3_bucket.session_recordings.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "session_recordings" {
+  bucket = aws_s3_bucket.session_recordings.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "session_recordings" {
+  bucket = aws_s3_bucket.session_recordings.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "session_recordings" {
+  bucket = aws_s3_bucket.session_recordings.id
+
+  rule {
+    id     = "expire-old-recordings"
+    status = "Enabled"
+
+    filter {} # Apply to all objects in the bucket
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365 # Adjust based on compliance requirements
+    }
+  }
+}
+
+# =====================================================
+# IAM CONFIGURATION FOR IRSA
+# =====================================================
+
+# Data source for current AWS account
+data "aws_caller_identity" "current" {}
+
+# IAM policy for Teleport auth service
+resource "aws_iam_policy" "teleport_auth" {
+  name        = "${var.cluster_name}-auth-policy"
+  description = "IAM policy for Teleport auth service"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:ConditionCheckItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:DescribeStream",
+          "dynamodb:DescribeTable",
+          "dynamodb:DescribeTimeToLive",
+          "dynamodb:GetItem",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem",
+          "dynamodb:UpdateTimeToLive"
+        ]
+        Resource = [
+          aws_dynamodb_table.teleport_backend.arn,
+          "${aws_dynamodb_table.teleport_backend.arn}/stream/*",
+          "${aws_dynamodb_table.teleport_backend.arn}/index/*",
+          aws_dynamodb_table.teleport_events.arn,
+          "${aws_dynamodb_table.teleport_events.arn}/stream/*",
+          "${aws_dynamodb_table.teleport_events.arn}/index/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:ListBucketVersions",
+          "s3:GetBucketVersioning"
+        ]
+        Resource = [
+          aws_s3_bucket.session_recordings.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.session_recordings.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Get EKS cluster OIDC provider
+data "aws_iam_openid_connect_provider" "eks" {
+  arn = data.terraform_remote_state.eks.outputs.oidc_provider_arn
+}
+
+# IAM role for Teleport auth service
+resource "aws_iam_role" "teleport_auth" {
+  name = "${var.cluster_name}-auth-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = data.aws_iam_openid_connect_provider.eks.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = [
+              "system:serviceaccount:${kubernetes_namespace.teleport_cluster.metadata[0].name}:teleport-cluster",
+              "system:serviceaccount:${kubernetes_namespace.teleport_cluster.metadata[0].name}:teleport-cluster-proxy"
+            ]
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "teleport_auth" {
+  role       = aws_iam_role.teleport_auth.name
+  policy_arn = aws_iam_policy.teleport_auth.arn
+}
+
+# Service accounts are created by Helm chart when serviceAccount.create = true
+
+# =====================================================
+# TELEPORT HELM/SERVICE DEPLOYMENT
+# =====================================================
+resource "kubernetes_service_account" "teleport_auth" {
+  metadata {
+    name      = "teleport-cluster"
+    namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.teleport_auth.arn
+    }
+  }
+}
+
+resource "kubernetes_service_account" "teleport_proxy" {
+  metadata {
+    name      = "teleport-cluster-proxy"
+    namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.teleport_auth.arn
+    }
+  }
+}
+
+resource "kubernetes_service_account" "teleport_operator" {
+  metadata {
+    name      = "teleport-cluster-operator"
+    namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+  }
+}
+
+# Teleport Helm release 
 resource "helm_release" "teleport_cluster" {
   name       = "teleport-cluster"
   namespace  = kubernetes_namespace.teleport_cluster.metadata[0].name
@@ -149,17 +435,58 @@ resource "helm_release" "teleport_cluster" {
       acme              = true
       acmeEmail         = var.email
       enterprise        = fileexists("${path.module}/license.pem")
-
-      labels = { tier = "demo" }
-
-      operator       = { enabled = true }
-      authentication = { type = "saml" }
-      persistence    = { enabled = true }
+      labels = {
+        tier = "dev"
+      }
+      operator = {
+        enabled = true
+      }
+      authentication = {
+        type = "saml"
+      }
+      serviceAccount = {
+        create = false
+        name   = "teleport-cluster"
+      }
+      auth = {
+        serviceAccount = {
+          create = false
+          name   = "teleport-cluster"
+        }
+      }
+      proxy = {
+        serviceAccount = {
+          create = false
+          name   = "teleport-cluster-proxy"
+        }
+      }
+      operator = {
+        enabled = true
+        serviceAccount = {
+          create = false
+          name   = "teleport-cluster-operator"
+        }
+      }
+      chartMode = "aws"
+      aws = {
+        region                 = var.region
+        backendTable           = aws_dynamodb_table.teleport_backend.name
+        auditLogTable          = aws_dynamodb_table.teleport_events.name
+        auditLogMirrorOnStdout = false
+        dynamoAutoScaling      = false
+        sessionRecordingBucket = aws_s3_bucket.session_recordings.bucket
+      }
     })
   ]
-
   depends_on = [
-    kubernetes_secret.license
+    kubernetes_secret.license,
+    kubernetes_service_account.teleport_auth,
+    kubernetes_service_account.teleport_proxy,
+    kubernetes_service_account.teleport_operator,
+    aws_iam_role_policy_attachment.teleport_auth,
+    aws_dynamodb_table.teleport_backend,
+    aws_dynamodb_table.teleport_events,
+    aws_s3_bucket.session_recordings
   ]
 }
 
@@ -170,7 +497,7 @@ resource "time_sleep" "wait_for_operator" {
 }
 
 # =====================================================
-# TELEPORT CONFIGURATION RESOURCES
+# TELEPORT CLUSTER RESOURCES (CRDs)
 # =====================================================
 
 # SAML Connectors
@@ -341,8 +668,7 @@ resource "kubectl_manifest" "role_prod_access" {
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
         db_labels = {
-          tier = ["prod"],
-          tier = ["dev"]
+          tier = ["prod", "dev"]
         }
         db_names       = ["{{external.db_names}}", "*"]
         db_roles       = ["{{external.db_roles}}", "dbadmin"]
@@ -372,16 +698,14 @@ resource "kubectl_manifest" "role_prod_access" {
           "ubuntu", "ec2-user"
         ]
         node_labels = {
-          tier = ["prod"],
-          tier = ["dev"]
+          tier = ["prod", "dev"]
         }
         rules = [
           { resources = ["event"], verbs = ["list", "read"] },
           { resources = ["session"], verbs = ["read", "list"] }
         ]
         windows_desktop_labels = {
-          tier = ["prod"],
-          tier = ["dev"]
+          tier = ["prod", "dev"]
         }
         windows_desktop_logins = [
           "{{external.windows_logins}}",
@@ -548,4 +872,19 @@ output "cluster_name" {
 output "eks_cluster_name" {
   description = "EKS cluster name from remote state"
   value       = local.cluster_name
+}
+
+output "dynamodb_backend_table" {
+  description = "DynamoDB backend table name"
+  value       = aws_dynamodb_table.teleport_backend.name
+}
+
+output "dynamodb_events_table" {
+  description = "DynamoDB events table name"
+  value       = aws_dynamodb_table.teleport_events.name
+}
+
+output "s3_session_recordings_bucket" {
+  description = "S3 bucket for session recordings"
+  value       = aws_s3_bucket.session_recordings.id
 }
