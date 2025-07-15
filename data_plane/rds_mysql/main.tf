@@ -54,16 +54,16 @@ module "network" {
 module "rds_mysql" {
   source = "../../modules/rds_mysql"
 
-  env                   = var.env
-  user                  = var.user
-  proxy_address         = var.proxy_address
-  teleport_version      = var.teleport_version
-  region                = var.region
-  vpc_id                = module.network.vpc_id
-  db_subnet_group_name  = module.network.db_subnet_group_name
-  subnet_id             = module.network.subnet_id
-  security_group_ids    = [module.network.security_group_id]
-  ami_id                = data.aws_ami.linux.id
+  env                  = var.env
+  user                 = var.user
+  proxy_address        = var.proxy_address
+  teleport_version     = var.teleport_version
+  region               = var.region
+  vpc_id               = module.network.vpc_id
+  db_subnet_group_name = module.network.db_subnet_group_name
+  subnet_id            = module.network.subnet_id
+  security_group_ids   = [module.network.security_group_id]
+  ami_id               = data.aws_ami.linux.id
 }
 
 output "rds_endpoint" {
