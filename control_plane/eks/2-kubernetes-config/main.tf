@@ -199,6 +199,13 @@ resource "aws_dynamodb_table" "teleport_events" {
     projection_type = "ALL"
   }
 
+  global_secondary_index {
+    name            = "timesearchV2"
+    hash_key        = "CreatedAtDate"
+    range_key       = "CreatedAt"
+    projection_type = "ALL"
+  }
+
   server_side_encryption {
     enabled = true
   }
@@ -212,6 +219,10 @@ resource "aws_dynamodb_table" "teleport_events" {
     attribute_name = "Expires"
   }
 
+  lifecycle {
+    ignore_changes = [global_secondary_index]
+  }
+
   tags = {
     Name = "${var.cluster_name}-events"
   }
@@ -219,8 +230,8 @@ resource "aws_dynamodb_table" "teleport_events" {
 
 # S3 bucket for session recordings
 resource "aws_s3_bucket" "session_recordings" {
-  bucket = "${var.cluster_name}-session-recordings-${data.aws_caller_identity.current.account_id}"
-
+  bucket        = "${var.cluster_name}-session-recordings-${data.aws_caller_identity.current.account_id}"
+  force_destroy = true
   tags = {
     Name = "${var.cluster_name}-session-recordings"
   }
@@ -326,7 +337,8 @@ resource "aws_iam_policy" "teleport_auth" {
         Action = [
           "s3:ListBucket",
           "s3:ListBucketVersions",
-          "s3:GetBucketVersioning"
+          "s3:GetBucketVersioning",
+          "s3:ListMultipartUploads"
         ]
         Resource = [
           aws_s3_bucket.session_recordings.arn
