@@ -610,8 +610,8 @@ resource "kubectl_manifest" "role_dev_access" {
         aws_role_arns  = ["{{external.aws_role_arns}}"]
         db_labels      = { tier = ["dev"] }
         db_names       = ["{{external.db_names}}", "*"]
-        db_roles       = ["{{external.db_roles}}", "dbadmin"]
-        db_users       = ["{{external.db_users}}", "postgres", "reader"]
+        db_roles       = ["{{external.db_roles}}", "reader"]
+        db_users       = ["{{external.db_users}}", "reader"]
         desktop_groups = ["Administrators"]
         impersonate = {
           users = ["Db"]
