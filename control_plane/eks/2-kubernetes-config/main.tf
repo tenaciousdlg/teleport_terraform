@@ -526,7 +526,8 @@ resource "kubectl_manifest" "saml_connector_okta" {
     spec = {
       acs = "https://${var.cluster_name}:443/v1/webapi/saml/acs/okta"
       attributes_to_roles = [
-        { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "reviewer", "prod-access"] }
+        { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "prod-reviewer", "prod-access"] },
+        { name = "groups", value = "devs", roles = ["dev-access", "prod-requester"]}
       ]
       display                 = "okta dlg"
       entity_descriptor_url   = var.okta_metadata_url
@@ -605,10 +606,13 @@ resource "kubectl_manifest" "role_dev_access" {
       allow = {
         app_labels = {
           tier      = ["dev"]
-          "aws/env" = ["dev"]
+          team      = ["engineering"]
         }
         aws_role_arns  = ["{{external.aws_role_arns}}"]
-        db_labels      = { tier = ["dev"] }
+        db_labels = { 
+          tier = ["dev"]
+          team = ["engineering"]
+        }
         db_names       = ["{{external.db_names}}", "*"]
         db_roles       = ["{{external.db_roles}}", "reader"]
         db_users       = ["{{external.db_users}}", "reader"]
@@ -626,26 +630,33 @@ resource "kubectl_manifest" "role_dev_access" {
           }
         ]
         kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
-        kubernetes_labels = { tier = "dev" }
+        kubernetes_labels = { 
+          tier = "dev"
+          team = "engineering"
+        }
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
         logins = [
           "{{external.logins}}",
           "{{email.local(external.username)}}",
-          "{{email.local(external.email)}}",
-          "ubuntu", "ec2-user"
+          "{{email.local(external.email)}}"
         ]
-        node_labels = { tier = "dev" }
+        node_labels = { 
+          tier = ["dev"]
+          team = ["engineering"]
+        }
         rules = [
           { resources = ["event"], verbs = ["list", "read"] },
           { resources = ["session"], verbs = ["read", "list"] }
         ]
-        windows_desktop_labels = { tier = "dev" }
+        windows_desktop_labels = { 
+          tier = ["dev"]
+          team = ["engineering"]
+        }
         windows_desktop_logins = [
           "{{external.windows_logins}}",
-          "{{email.local(external.username)}}",
-          "Administrator"
+          "{{email.local(external.username)}}"
         ]
       }
       options = {
@@ -676,11 +687,12 @@ resource "kubectl_manifest" "role_prod_access" {
       allow = {
         app_labels = {
           tier      = ["prod", "dev"]
-          "aws/env" = ["prod", "dev"]
+          team      = ["engineering"]
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
         db_labels = {
           tier = ["prod", "dev"]
+          team = ["engineering"]
         }
         db_names       = ["{{external.db_names}}", "*"]
         db_roles       = ["{{external.db_roles}}", "dbadmin"]
@@ -711,6 +723,7 @@ resource "kubectl_manifest" "role_prod_access" {
         ]
         node_labels = {
           tier = ["prod", "dev"]
+          team = ["engineering"]
         }
         rules = [
           { resources = ["event"], verbs = ["list", "read"] },
@@ -718,6 +731,7 @@ resource "kubectl_manifest" "role_prod_access" {
         ]
         windows_desktop_labels = {
           tier = ["prod", "dev"]
+          team = ["engineering"]
         }
         windows_desktop_logins = [
           "{{external.windows_logins}}",
@@ -739,14 +753,14 @@ resource "kubectl_manifest" "role_prod_access" {
   })
 }
 
-resource "kubectl_manifest" "role_reviewer" {
+resource "kubectl_manifest" "role_prod_reviewer" {
   depends_on = [time_sleep.wait_for_operator]
 
   yaml_body = yamlencode({
     apiVersion = "resources.teleport.dev/v1"
     kind       = "TeleportRoleV7"
     metadata = {
-      name      = "reviewer"
+      name      = "prod-reviewer"
       namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
     }
     spec = {
@@ -760,14 +774,14 @@ resource "kubectl_manifest" "role_reviewer" {
   })
 }
 
-resource "kubectl_manifest" "role_requester" {
+resource "kubectl_manifest" "role_prod_requester" {
   depends_on = [time_sleep.wait_for_operator]
 
   yaml_body = yamlencode({
     apiVersion = "resources.teleport.dev/v1"
     kind       = "TeleportRoleV7"
     metadata = {
-      name      = "requester"
+      name      = "prod-requester"
       namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
     }
     spec = {
