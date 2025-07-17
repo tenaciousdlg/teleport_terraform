@@ -527,7 +527,7 @@ resource "kubectl_manifest" "saml_connector_okta" {
       acs = "https://${var.cluster_name}:443/v1/webapi/saml/acs/okta"
       attributes_to_roles = [
         { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "prod-reviewer", "prod-access"] },
-        { name = "groups", value = "devs", roles = ["dev-access", "prod-requester"]}
+        { name = "groups", value = "devs", roles = ["dev-access", "prod-requester"] }
       ]
       display                 = "okta dlg"
       entity_descriptor_url   = var.okta_metadata_url
@@ -599,17 +599,18 @@ resource "kubectl_manifest" "role_dev_access" {
     apiVersion = "resources.teleport.dev/v1"
     kind       = "TeleportRoleV7"
     metadata = {
-      name      = "dev-access"
-      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+      name        = "dev-access"
+      namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "custom: demo role for dev access"
     }
     spec = {
       allow = {
         app_labels = {
-          tier      = ["dev"]
-          team      = ["engineering"]
+          tier = ["dev"]
+          team = ["engineering"]
         }
-        aws_role_arns  = ["{{external.aws_role_arns}}"]
-        db_labels = { 
+        aws_role_arns = ["{{external.aws_role_arns}}"]
+        db_labels = {
           tier = ["dev"]
           team = ["engineering"]
         }
@@ -630,7 +631,7 @@ resource "kubectl_manifest" "role_dev_access" {
           }
         ]
         kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
-        kubernetes_labels = { 
+        kubernetes_labels = {
           tier = "dev"
           team = "engineering"
         }
@@ -642,7 +643,7 @@ resource "kubectl_manifest" "role_dev_access" {
           "{{email.local(external.username)}}",
           "{{email.local(external.email)}}"
         ]
-        node_labels = { 
+        node_labels = {
           tier = ["dev"]
           team = ["engineering"]
         }
@@ -650,7 +651,7 @@ resource "kubectl_manifest" "role_dev_access" {
           { resources = ["event"], verbs = ["list", "read"] },
           { resources = ["session"], verbs = ["read", "list"] }
         ]
-        windows_desktop_labels = { 
+        windows_desktop_labels = {
           tier = ["dev"]
           team = ["engineering"]
         }
@@ -668,6 +669,7 @@ resource "kubectl_manifest" "role_dev_access" {
         desktop_directory_sharing      = true
         max_session_ttl                = "8h0m0s"
         pin_source_ip                  = false
+        enhanced_recording             = ["command", "network"]
       }
     }
   })
@@ -686,8 +688,8 @@ resource "kubectl_manifest" "role_prod_access" {
     spec = {
       allow = {
         app_labels = {
-          tier      = ["prod", "dev"]
-          team      = ["engineering"]
+          tier = ["prod", "dev"]
+          team = ["engineering"]
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
         db_labels = {
@@ -748,6 +750,7 @@ resource "kubectl_manifest" "role_prod_access" {
         desktop_directory_sharing      = true
         max_session_ttl                = "2h0m0s"
         pin_source_ip                  = false
+        enhanced_recording             = ["command", "network"]
       }
     }
   })
