@@ -125,6 +125,7 @@ db_service:
   resources:
    - labels:
        "tier": "${env}"
+       "team": "${team}"
 
 auth_service:
   enabled: "no"
@@ -133,7 +134,7 @@ ssh_service:
   enabled: "yes"
   labels:
     tier: "${env}"
-    os: amzn23
+    team: "${team}"
 
 proxy_service:
   enabled: "no"

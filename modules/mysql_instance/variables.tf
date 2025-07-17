@@ -40,3 +40,9 @@ variable "security_group_ids" {
   description = "Optional: existing security group IDs"
   type        = list(string)
 }
+
+variable "team" {
+  description = "Team label for the MySQL database"
+  type        = string
+  default     = "engineering"
+}

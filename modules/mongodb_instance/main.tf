@@ -90,6 +90,7 @@ resource "aws_instance" "mongodb" {
     key           = tls_private_key.server_key.private_key_pem
     tele_ca       = var.teleport_db_ca
     env           = var.env
+    team          = var.team
   })
 
   metadata_options {

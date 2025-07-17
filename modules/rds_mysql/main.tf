@@ -199,6 +199,7 @@ resource "aws_instance" "agent" {
     rds_password     = random_password.db_password.result
     region           = var.region
     env              = var.env
+    team             = var.team
   })
 
   metadata_options {

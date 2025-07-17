@@ -46,6 +46,7 @@ resource "aws_instance" "desktop_service" {
     proxy_addr           = var.proxy_address,
     teleport_version     = var.teleport_version,
     env                  = var.env,
+    team                 = var.team,
     windows_hosts        = jsonencode(var.windows_hosts)
   })
 

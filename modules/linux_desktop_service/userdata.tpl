@@ -48,7 +48,7 @@ ssh_service:
     period: 1m0s
   labels:
     "tier": "${env}"
-    "team": "engineering"
+    "team": "${team}"
   enhanced_recording:
     enabled: "false"
 windows_desktop_service:
@@ -60,6 +60,7 @@ windows_desktop_service:
     addr: ${windows_internal_dns}
     labels:
       "tier": "${env}"
+      "team": "${team}"
 EOF
 
 # Sets teleport service to start at boot and brings it up
@@ -68,6 +69,3 @@ systemctl restart teleport;
 
 # Log setup complete
 echo "[INFO] Teleport windows_desktop_service setup complete."
-
-# Additional NLA registry fallback for Windows nodes (in their own userdata)
-# Note: not run here because this is the Linux host

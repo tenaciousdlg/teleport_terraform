@@ -47,6 +47,12 @@ variable "security_group_ids" {
   type        = list(string)
 }
 
+variable "team" {
+  description = "Team label for desktop service"
+  type        = string
+  default     = "engineering"
+}
+
 variable "windows_internal_dns" {
   description = "private dns of windows host"
   type        = string

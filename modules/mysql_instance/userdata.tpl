@@ -37,7 +37,7 @@ db_service:
   resources:
     - labels:
         "tier": "${env}"
-        "team": "engineering"
+        "team": "${team}"
 auth_service:
   enabled: "no"
 ssh_service:

@@ -41,7 +41,8 @@ module "host_identity" {
   role_name        = "ansible-machine-role"
   allowed_logins   = ["ec2-user", local.user]
   node_labels = {
-    "tier" = [var.env]
+    "tier" = [var.env],
+    "team" = [var.team]
   }
 }
 
@@ -69,6 +70,7 @@ resource "aws_instance" "ansible_host" {
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     env              = var.env
+    team             = var.team
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     bot_token        = module.host_identity.bot_token
@@ -81,7 +83,7 @@ resource "aws_instance" "ansible_host" {
   }
 
   root_block_device {
-    volume_size           = 10 # required for AMZN Linux 2023 AMI EBS size
+    volume_size           = 30
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true

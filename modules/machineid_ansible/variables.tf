@@ -27,3 +27,9 @@ variable "security_group_ids" {
   description = "List of security group IDs to associate with the instance"
   type        = list(string)
 }
+
+variable "team" {
+  description = "Team label for Machine ID automation"
+  type        = string
+  default     = "engineering"
+}

@@ -23,8 +23,7 @@ ssh_service:
     enabled: true
   labels:
     tier: ${env}
-    team: engineering
-    os: amzn23
+    team: ${team}
   commands:
     - name: "hostname"
       command: ["/bin/hostname"]

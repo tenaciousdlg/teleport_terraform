@@ -46,6 +46,7 @@ resource "aws_instance" "httpbin" {
     teleport_version = var.teleport_version
     env              = var.env
     user             = var.user
+    team             = var.team
   })
 
   metadata_options {

@@ -46,6 +46,7 @@ resource "aws_instance" "grafana" {
     teleport_version = var.teleport_version
     env              = var.env
     user             = local.user
+    team             = var.team
   })
 
   metadata_options {

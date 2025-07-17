@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 
 hostnamectl set-hostname "${env}-postgres"
 
@@ -30,7 +30,7 @@ ssl_key_file = 'certs/server.key'
 ssl_ca_file = 'certs/server.cas'
 EOF
 
-# Replace pg_hba.conf with explicit rules for cert auth
+# Replace pg_hba.conf with explicit rules for cert auth. File adjusted to put cert first otherwise it'll break
 cat > /var/lib/pgsql/data/pg_hba.conf <<EOF
 hostssl all             all             ::/0                    cert
 hostssl all             all             0.0.0.0/0               cert
@@ -71,12 +71,12 @@ db_service:
   resources:
     - labels:
         "tier": "${env}"
-        "team": "engineering"
+        "team": "${team}"
 ssh_service:
   enabled: true
   labels:
     "tier": "${env}"
-    "team": "engineering"
+    "team": "${team}"
 auth_service:
   enabled: false
 proxy_service:

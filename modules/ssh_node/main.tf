@@ -46,6 +46,7 @@ resource "aws_instance" "ssh_node" {
     teleport_version = var.teleport_version
     env              = var.env
     host             = "${var.env}-ssh-${count.index}"
+    team             = var.team
   })
 
   metadata_options {

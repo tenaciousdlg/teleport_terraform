@@ -30,7 +30,7 @@ ssh_service:
   enabled: true
   labels:
     tier: ${env}
-    team: engineering
+    team: ${team}
   enhanced_recording:
     enabled: true
 auth_service:

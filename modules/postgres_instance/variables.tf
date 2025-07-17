@@ -40,3 +40,9 @@ variable "security_group_ids" {
   description = "Security group IDs for the instance"
   type        = list(string)
 }
+
+variable "team" {
+  description = "Team label for the PostgreSQL database"
+  type        = string
+  default     = "engineering"
+}

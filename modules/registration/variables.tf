@@ -8,7 +8,6 @@ variable "resource_type" {
   }
 }
 
-
 variable "name" {
   description = "Name of the Teleport resource"
   type        = string
