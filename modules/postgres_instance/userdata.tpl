@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 # update hostname
-hostnamectl set-hostname "${env}-postgres"
+hostnamectl set-hostname "${name}"
 # packages
 dnf update -y
 dnf install -y postgresql15-server postgresql15 jq

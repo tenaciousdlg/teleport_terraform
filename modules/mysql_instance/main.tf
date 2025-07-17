@@ -82,6 +82,7 @@ resource "aws_instance" "mysql" {
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/userdata.tpl", {
+    name             = "${var.env}-mysql"
     token            = teleport_provision_token.db.metadata.name
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version

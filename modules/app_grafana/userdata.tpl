@@ -1,11 +1,14 @@
 #!/bin/bash
 set -euxo pipefail
-# updates ec2 hostname 
+
+# Set hostname
 hostnamectl set-hostname "${name}"
+
 # installs docker and jq used later in the script
 dnf install -y docker jq
 systemctl enable docker
 systemctl start docker
+
 # sets up grafana for jwt auth from teleport
 mkdir -p /opt/grafana/{provisioning,dashboards,data}
 cat <<EOT > /opt/grafana/grafana.ini

@@ -1,8 +1,8 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 
 # Set hostname
-hostnamectl set-hostname "${env}-mysql"
+hostnamectl set-hostname "${name}"
 
 # Install dependencies
 dnf update -y

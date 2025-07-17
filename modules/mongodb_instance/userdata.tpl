@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 # Set hostname
-hostnamectl set-hostname "${env}-mongodb"
+hostnamectl set-hostname "${name}"
 
 # Install dependencies
 dnf update -y

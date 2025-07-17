@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
-hostnamectl set-hostname ${host}
+hostnamectl set-hostname "${name}"
 dnf install nginx -y 
 curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${token}" > /tmp/token

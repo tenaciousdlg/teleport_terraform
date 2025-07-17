@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 # set hostname
-sudo hostnamectl set-hostname "${name}"
+hostnamectl set-hostname "${name}"
 
 # Teleport does not allow periods in windows names
 WINDOWS_HOST_NAME=$(echo "${windows_internal_dns}" | awk -F. '{print $1}')
