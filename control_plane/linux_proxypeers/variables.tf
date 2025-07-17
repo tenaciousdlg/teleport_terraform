@@ -44,3 +44,7 @@ variable "user" {
   type        = string
   description = "SSO username; used for Teleport purposes (e.g. jsmith@example.com)"
 }
+variable "env" {
+  description = "Environment label (e.g., dev, prod)"
+  type        = string
+}

@@ -5,7 +5,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.93"
+      version = "~> 5.99"
     }
   }
 }
@@ -14,7 +14,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = "dev"
+      "tier"                 = var.env
       "ManagedBy"            = "terraform"
     }
   }
