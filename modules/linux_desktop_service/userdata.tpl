@@ -22,7 +22,7 @@ version: v3
 teleport:
   data_dir: "/var/lib/teleport"
   auth_token: /tmp/token
-  proxy_server: ${proxy_addr}:443
+  proxy_server: ${proxy_address}:443
   log:
     output: stderr
     severity: INFO
