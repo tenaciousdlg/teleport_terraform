@@ -1,13 +1,13 @@
 terraform {
   required_providers {
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
     aws = {
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
     }
     random = {
-      source  = "hashicorp/random"
+      source = "hashicorp/random"
     }
   }
 }
@@ -33,11 +33,11 @@ resource "teleport_provision_token" "agent" {
 }
 
 resource "aws_instance" "ssh_node" {
-  count                     = var.agent_count
-  ami                       = var.ami_id
-  instance_type             = var.instance_type
-  subnet_id                 = var.subnet_id 
-  vpc_security_group_ids    = var.security_group_ids
+  count                       = var.agent_count
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
+  subnet_id                   = var.subnet_id
+  vpc_security_group_ids      = var.security_group_ids
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/userdata.tpl", {

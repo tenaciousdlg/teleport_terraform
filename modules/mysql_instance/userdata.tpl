@@ -25,7 +25,7 @@ cat > /etc/teleport.yaml <<EOF
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
-  proxy_server: "${domain}:443"
+  proxy_server: "${proxy_address}:443"
   auth_token: "${token}"
   log:
     output: stderr

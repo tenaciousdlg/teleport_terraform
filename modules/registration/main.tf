@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
   }
 }
@@ -39,7 +39,7 @@ locals {
       headers = [
         for header in var.rewrite_headers : {
           name  = split(":", header)[0]
-          value = trimspace(join(":", slice(split(":", header), 1, length(split(":", header)))) )
+          value = trimspace(join(":", slice(split(":", header), 1, length(split(":", header)))))
         }
       ]
     }

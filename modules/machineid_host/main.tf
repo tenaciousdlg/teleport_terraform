@@ -2,7 +2,7 @@
 terraform {
   required_providers {
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
     random = {
       source = "hashicorp/random"

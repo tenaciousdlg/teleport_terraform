@@ -1,16 +1,16 @@
 terraform {
   required_providers {
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
     aws = {
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
     }
     tls = {
-      source  = "hashicorp/tls"
+      source = "hashicorp/tls"
     }
     random = {
-      source  = "hashicorp/random"
+      source = "hashicorp/random"
     }
   }
 }
@@ -82,15 +82,15 @@ resource "aws_instance" "mongodb" {
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    token         = teleport_provision_token.db.metadata.name
-    domain        = var.proxy_address
-    major         = var.teleport_version
-    ca            = tls_self_signed_cert.ca_cert.cert_pem
-    cert          = tls_locally_signed_cert.server_cert.cert_pem
-    key           = tls_private_key.server_key.private_key_pem
-    tele_ca       = var.teleport_db_ca
-    env           = var.env
-    team          = var.team
+    token            = teleport_provision_token.db.metadata.name
+    proxy_address    = var.proxy_address
+    teleport_version = var.teleport_version
+    ca               = tls_self_signed_cert.ca_cert.cert_pem
+    cert             = tls_locally_signed_cert.server_cert.cert_pem
+    key              = tls_private_key.server_key.private_key_pem
+    tele_ca          = var.teleport_db_ca
+    env              = var.env
+    team             = var.team
   })
 
   metadata_options {

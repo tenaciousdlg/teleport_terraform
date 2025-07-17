@@ -1,13 +1,13 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
     }
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
     random = {
-      source  = "hashicorp/random"
+      source = "hashicorp/random"
     }
   }
 }
@@ -17,8 +17,8 @@ locals {
 }
 
 resource "random_password" "db_password" {
-  length  = 32
-  special = true
+  length           = 32
+  special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 

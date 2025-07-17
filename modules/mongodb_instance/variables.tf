@@ -7,11 +7,13 @@ variable "user" {
 }
 
 variable "proxy_address" {
-  description = "Teleport Proxy host (e.g., proxy.example.com)"
+  description = "Teleport Proxy address (without https://)"
+  type        = string
 }
 
 variable "teleport_version" {
-  description = "Teleport version to install (e.g., 16.0.0)"
+  description = "Teleport version to install"
+  type        = string
 }
 
 variable "teleport_db_ca" {

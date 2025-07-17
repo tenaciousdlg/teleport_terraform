@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
+      source = "hashicorp/aws"
     }
   }
 }
@@ -139,7 +139,7 @@ resource "aws_db_subnet_group" "main" {
   count      = var.create_db_subnet_group ? 1 : 0
   name       = "${var.env}-db-subnet-group"
   subnet_ids = var.create_secondary_subnet ? [aws_subnet.private.id, aws_subnet.private_secondary[0].id] : [aws_subnet.private.id, aws_subnet.public.id]
-  
+
   tags = {
     Name = "${var.env}-db-subnet-group"
   }
