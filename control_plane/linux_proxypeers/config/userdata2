@@ -1,5 +1,5 @@
 #!/bin/bash
-TELEPORT_EDITION="enterprise"
+set -euxo pipefail
 # Get 10.x.x.x private IP for proxy peering
 PRIVATE_IP=$(ip -o -4 addr show scope global | awk '/10\./ {print $4}' | cut -d/ -f1 | head -n1)
 
@@ -10,7 +10,7 @@ sudo hostnamectl set-hostname "${name}"
 sudo mkdir -p /var/lib/teleport
 
 # Install Teleport
-curl https://cdn.teleport.dev/install.sh | bash -s ${teleport_version} $${TELEPORT_EDITION?}
+curl https://cdn.teleport.dev/install.sh | bash -s ${teleport_version} enterprise
 
 # Create Teleport config
 sudo tee /etc/teleport.yaml > /dev/null <<EOF
