@@ -2,7 +2,7 @@
 set -euxo pipefail
 hostnamectl set-hostname ${host}
 dnf install nginx -y 
-curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${token}" > /tmp/token
 
 cat<<EOF >/etc/teleport.yaml

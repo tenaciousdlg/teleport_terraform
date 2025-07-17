@@ -12,7 +12,7 @@ echo "${token}" > /tmp/token
 
 # installs teleport enterprise edition 
 # update for versions >17.3 
-curl "https://${proxy_addr}/scripts/install.sh" | sudo bash
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 # Log installed version for debugging
 teleport --version || true

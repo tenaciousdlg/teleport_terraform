@@ -53,7 +53,7 @@ GRANT CONNECT ON DATABASE postgres TO reader;
 EOF
 
 # Install Teleport
-curl https://goteleport.com/static/install.sh | bash -s "${major}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 cat <<EOF > /etc/teleport.yaml
 version: v3

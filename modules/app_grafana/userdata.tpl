@@ -47,7 +47,7 @@ docker run -d \
   -v /opt/grafana/data:/var/lib/grafana \
   grafana/grafana
 # install teleport
-curl https://goteleport.com/static/install.sh | bash -s ${teleport_version} enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 cat <<EOF > /etc/teleport.yaml
 version: v3

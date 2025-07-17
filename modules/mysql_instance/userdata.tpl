@@ -18,7 +18,7 @@ mysql -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
 mysql -e "FLUSH PRIVILEGES;"
 
 # Install Teleport
-curl https://goteleport.com/static/install.sh | bash -s "${major}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 # Write teleport.yaml
 cat > /etc/teleport.yaml <<EOF

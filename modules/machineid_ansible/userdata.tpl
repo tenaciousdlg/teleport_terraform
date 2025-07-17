@@ -11,7 +11,7 @@ yum install -y jq python3 python3-pip git
 pip3 install ansible
 
 # Install Teleport
-curl https://goteleport.com/static/install.sh | bash -s "${teleport_version}" "enterprise"
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${node_token}" > /tmp/token
 
 # Write teleport.yaml
