@@ -95,7 +95,7 @@ module "mysql_instance" {
   source             = "../../modules/mysql_instance"
   env                = var.env
   user               = var.user
-  team               = "engineering"
+  team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
@@ -115,7 +115,7 @@ module "mysql_registration" {
   ca_cert_chain = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
-    team = "engineering"  # ✅ Fixed: Added missing team label
+    team = var.team
   }
 }
 
@@ -123,6 +123,7 @@ module "mysql_registration" {
 module "postgres_instance" {
   source             = "../../modules/postgres_instance"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -144,7 +145,7 @@ module "postgres_registration" {
   ca_cert_chain = module.postgres_instance.ca_cert
   labels = {
     tier = var.env
-    team = "engineering"  # ✅ Fixed: Added missing team label
+    team = var.team
   }
 }
 
@@ -152,6 +153,7 @@ module "postgres_registration" {
 module "mongodb_instance" {
   source             = "../../modules/mongodb_instance"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -172,7 +174,7 @@ module "mongodb_registration" {
   ca_cert_chain = module.mongodb_instance.ca_cert
   labels = {
     tier = var.env
-    team = "engineering"
+    team = var.team
   }
 }
 
@@ -181,6 +183,7 @@ module "rds_mysql" {
   source = "../../modules/rds_mysql"
 
   env                  = var.env
+  team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
   teleport_version     = var.teleport_version
@@ -198,6 +201,7 @@ module "rds_mysql" {
 module "ssh_nodes" {
   source             = "../../modules/ssh_node"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -226,6 +230,7 @@ module "windows_instance" {
 module "linux_desktop_service" {
   source               = "../../modules/linux_desktop_service"
   env                  = var.env
+  team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
   teleport_version     = var.teleport_version
@@ -248,6 +253,7 @@ module "linux_desktop_service" {
 module "grafana_app" {
   source             = "../../modules/app_grafana"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -266,7 +272,7 @@ module "grafana_registration" {
   public_addr   = "grafana-${var.env}.${var.proxy_address}"
   labels = {
     tier               = var.env
-    team               = "engineering"  # ✅ Fixed: Added missing team label
+    team               = var.team
     "teleport.dev/app" = "grafana"
   }
   rewrite_headers = [
@@ -280,6 +286,7 @@ module "grafana_registration" {
 module "httpbin_app" {
   source             = "../../modules/app_httpbin"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -298,7 +305,7 @@ module "httpbin_registration" {
   public_addr   = "httpbin-${var.env}.${var.proxy_address}"
   labels = {
     tier               = var.env
-    team               = "engineering"
+    team               = var.team
     "teleport.dev/app" = "httpbin"
   }
   rewrite_headers = [
@@ -315,6 +322,7 @@ module "machineid_ansible" {
   source = "../../modules/machineid_ansible"
 
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version

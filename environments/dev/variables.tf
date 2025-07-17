@@ -3,13 +3,18 @@ variable "env" {
   type        = string
 }
 
-variable "user" {
-  description = "Creator tag"
+variable "proxy_address" {
+  description = "Teleport Proxy address (no https://)"
   type        = string
 }
 
-variable "proxy_address" {
-  description = "Teleport Proxy address (no https://)"
+variable "region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "team" {
+  description = "Team label for desktop service"
   type        = string
 }
 
@@ -18,7 +23,7 @@ variable "teleport_version" {
   type        = string
 }
 
-variable "region" {
-  description = "AWS region"
+variable "user" {
+  description = "Creator tag"
   type        = string
 }
