@@ -47,7 +47,7 @@ provider "aws" {
   region = var.region
   default_tags {
     tags = {
-      "teleport.dev/creator" = var.email
+      "teleport.dev/creator" = var.user
       "tier"                 = "dev"
       "ManagedBy"            = "terraform"
     }
@@ -132,7 +132,7 @@ resource "kubernetes_secret" "license" {
 
 # DynamoDB tables for Teleport backend
 resource "aws_dynamodb_table" "teleport_backend" {
-  name         = "${var.cluster_name}-backend"
+  name         = "${var.proxy_address}-backend"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "HashKey"
   range_key    = "FullPath"
@@ -159,12 +159,12 @@ resource "aws_dynamodb_table" "teleport_backend" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-backend"
+    Name = "${var.proxy_address}-backend"
   }
 }
 
 resource "aws_dynamodb_table" "teleport_events" {
-  name         = "${var.cluster_name}-events"
+  name         = "${var.proxy_address}-events"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "SessionID"
   range_key    = "EventIndex"
@@ -224,16 +224,16 @@ resource "aws_dynamodb_table" "teleport_events" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-events"
+    Name = "${var.proxy_address}-events"
   }
 }
 
 # S3 bucket for session recordings
 resource "aws_s3_bucket" "session_recordings" {
-  bucket        = "${var.cluster_name}-session-recordings-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.proxy_address}-session-recordings-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
   tags = {
-    Name = "${var.cluster_name}-session-recordings"
+    Name = "${var.proxy_address}-session-recordings"
   }
 }
 
@@ -298,7 +298,7 @@ data "aws_caller_identity" "current" {}
 
 # IAM policy for Teleport auth service
 resource "aws_iam_policy" "teleport_auth" {
-  name        = "${var.cluster_name}-auth-policy"
+  name        = "${var.proxy_address}-auth-policy"
   description = "IAM policy for Teleport auth service"
 
   policy = jsonencode({
@@ -366,7 +366,7 @@ data "aws_iam_openid_connect_provider" "eks" {
 
 # IAM role for Teleport auth service
 resource "aws_iam_role" "teleport_auth" {
-  name = "${var.cluster_name}-auth-role"
+  name = "${var.proxy_address}-auth-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -436,16 +436,16 @@ resource "helm_release" "teleport_cluster" {
   namespace  = kubernetes_namespace.teleport_cluster.metadata[0].name
   repository = "https://charts.releases.teleport.dev"
   chart      = "teleport-cluster"
-  version    = var.teleport_ver
+  version    = var.teleport_version
   wait       = true
   timeout    = 300
 
   values = [
     jsonencode({
-      clusterName       = var.cluster_name
+      clusterName       = var.proxy_address
       proxyListenerMode = "multiplex"
       acme              = true
-      acmeEmail         = var.email
+      acmeEmail         = var.user
       enterprise        = fileexists("${path.module}/license.pem")
       labels = {
         tier = "dev"
@@ -524,14 +524,14 @@ resource "kubectl_manifest" "saml_connector_okta" {
       namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
     }
     spec = {
-      acs = "https://${var.cluster_name}:443/v1/webapi/saml/acs/okta"
+      acs = "https://${var.proxy_address}:443/v1/webapi/saml/acs/okta"
       attributes_to_roles = [
         { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "prod-reviewer", "prod-access"] },
         { name = "groups", value = "devs", roles = ["dev-access", "prod-requester"] }
       ]
       display                 = "okta dlg"
       entity_descriptor_url   = var.okta_metadata_url
-      service_provider_issuer = "https://${var.cluster_name}/sso/saml/metadata"
+      service_provider_issuer = "https://${var.proxy_address}/sso/saml/metadata"
     }
   })
 }
@@ -548,13 +548,13 @@ resource "kubectl_manifest" "saml_connector_okta_preview" {
       namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
     }
     spec = {
-      acs = "https://${var.cluster_name}/v1/webapi/saml/acs/okta-preview"
+      acs = "https://${var.proxy_address}/v1/webapi/saml/acs/okta-preview"
       attributes_to_roles = [
         { name = "groups", value = "Solutions-Engineering", roles = ["auditor", "access", "editor"] }
       ]
-      display                 = "okta"
+      display                 = "okta preview"
       entity_descriptor_url   = var.okta_preview_metadata_url
-      service_provider_issuer = "https://${var.cluster_name}/sso/saml/metadata"
+      service_provider_issuer = "https://${var.proxy_address}/sso/saml/metadata"
     }
   })
 }
@@ -601,7 +601,7 @@ resource "kubectl_manifest" "role_dev_access" {
     metadata = {
       name        = "dev-access"
       namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
-      description = "custom: demo role for dev access"
+      description = "custom: terraform demo role for dev access"
     }
     spec = {
       allow = {
@@ -661,7 +661,7 @@ resource "kubectl_manifest" "role_dev_access" {
         ]
       }
       options = {
-        create_db_user                 = true
+        create_db_user                 = false
         create_desktop_user            = true
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -742,7 +742,7 @@ resource "kubectl_manifest" "role_prod_access" {
         ]
       }
       options = {
-        create_db_user                 = true
+        create_db_user                 = false
         create_desktop_user            = true
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -863,7 +863,7 @@ resource "aws_route53_record" "cluster_endpoint" {
   count = var.domain_name != "" ? 1 : 0
 
   zone_id = data.aws_route53_zone.main[0].zone_id
-  name    = var.cluster_name
+  name    = var.proxy_address
   type    = "CNAME"
   ttl     = "300"
   records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
@@ -873,7 +873,7 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
   count = var.domain_name != "" ? 1 : 0
 
   zone_id = data.aws_route53_zone.main[0].zone_id
-  name    = "*.${var.cluster_name}"
+  name    = "*.${var.proxy_address}"
   type    = "CNAME"
   ttl     = "300"
   records = [data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname]
@@ -885,17 +885,17 @@ resource "aws_route53_record" "wild_cluster_endpoint" {
 
 output "teleport_url" {
   description = "Teleport demo URL"
-  value       = var.domain_name != "" ? "https://${var.cluster_name}" : "https://${try(data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname, "pending")}"
+  value       = var.domain_name != "" ? "https://${var.proxy_address}" : "https://${try(data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname, "pending")}"
 }
 
 output "teleport_version" {
   description = "Deployed Teleport version"
-  value       = var.teleport_ver
+  value       = var.teleport_version
 }
 
 output "cluster_name" {
   description = "Teleport cluster name"
-  value       = var.cluster_name
+  value       = var.proxy_address
 }
 
 output "eks_cluster_name" {

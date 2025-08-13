@@ -6,24 +6,24 @@ variable "region" {
   default     = "us-east-2"
 }
 
-variable "cluster_name" {
+variable "proxy_address" {
   description = "Name of your Teleport cluster (e.g. teleport.example.com)"
   type        = string
 }
 
 variable "domain_name" {
-  description = "Domain name for DNS records (leave empty to skip DNS setup)"
+  description = "Parent domain name for DNS records (e.g. demo.com)."
   type        = string
   default     = ""
 }
 
-variable "email" {
+variable "user" {
   description = "Email for Teleport admin and ACME certificate"
   type        = string
 }
 
-variable "teleport_ver" {
-  description = "Teleport version to deploy (e.g. 17.0.0)"
+variable "teleport_version" {
+  description = "Teleport version to deploy (e.g. 18.0.0)"
   type        = string
 }
 
