@@ -22,3 +22,8 @@ variable "teleport_version" {
   description = "Teleport version to install on the MySQL host"
   type        = string
 }
+
+variable "team" {
+  description = "Team label for desktop service"
+  type        = string
+}

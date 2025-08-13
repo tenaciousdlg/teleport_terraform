@@ -66,6 +66,7 @@ module "network" {
 module "mysql_instance" {
   source             = "../../modules/mysql_instance"
   env                = var.env
+  team               = var.team
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
@@ -86,5 +87,6 @@ module "mysql_registration" {
   ca_cert_chain = module.mysql_instance.ca_cert
   labels = {
     tier = var.env
+    team = var.team
   }
 }
