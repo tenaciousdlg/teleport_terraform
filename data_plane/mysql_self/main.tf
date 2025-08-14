@@ -85,6 +85,7 @@ module "mysql_registration" {
   protocol      = "mysql"
   uri           = "localhost:3306"
   ca_cert_chain = module.mysql_instance.ca_cert
+  db_access_pattern = "mapped"
   labels = {
     tier = var.env
     team = var.team

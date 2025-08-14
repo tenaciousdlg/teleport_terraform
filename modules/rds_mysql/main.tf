@@ -167,6 +167,7 @@ resource "teleport_database" "rds_mysql" {
       tier                  = var.env
       team                  = var.team
       "teleport.dev/origin" = "dynamic"
+      "teleport.dev/db-access" = "auto"
     }
   }
   spec = {

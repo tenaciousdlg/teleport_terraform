@@ -56,3 +56,13 @@ variable "insecure_skip_verify" {
   type    = bool
   default = false
 }
+
+variable "db_access_pattern" {
+  description = "Database access pattern: 'mapped' for pre-created users, 'auto' for auto user provisioning"
+  type        = string
+  default     = "mapped"
+  validation {
+    condition     = contains(["mapped", "auto"], var.db_access_pattern)
+    error_message = "db_access_pattern must be either 'mapped' or 'auto'."
+  }
+}

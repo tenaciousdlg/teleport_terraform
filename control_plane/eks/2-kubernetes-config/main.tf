@@ -526,8 +526,8 @@ resource "kubectl_manifest" "saml_connector_okta" {
     spec = {
       acs = "https://${var.proxy_address}:443/v1/webapi/saml/acs/okta"
       attributes_to_roles = [
-        { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "editor", "group-access", "prod-reviewer", "prod-access"] },
-        { name = "groups", value = "devs", roles = ["dev-access", "prod-requester"] }
+        { name = "groups", value = "engineers", roles = ["auditor", "dev-access", "dev-auto-access", "editor", "group-access", "prod-reviewer", "prod-access", "prod-auto-access"] },
+        { name = "groups", value = "devs", roles = ["dev-access", "dev-auto-access", "prod-requester"] }
       ]
       display                 = "okta dlg"
       entity_descriptor_url   = var.okta_metadata_url
@@ -591,7 +591,7 @@ resource "kubectl_manifest" "login_rule_okta" {
   })
 }
 
-# Roles
+# Dev Access Role - For MAPPED USER databases (self-hosted MySQL, PostgreSQL, MongoDB)
 resource "kubectl_manifest" "role_dev_access" {
   depends_on = [time_sleep.wait_for_operator]
 
@@ -601,7 +601,7 @@ resource "kubectl_manifest" "role_dev_access" {
     metadata = {
       name        = "dev-access"
       namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
-      description = "custom: terraform demo role for dev access"
+      description = "Development access for mapped user databases and infrastructure"
     }
     spec = {
       allow = {
@@ -610,13 +610,18 @@ resource "kubectl_manifest" "role_dev_access" {
           team = ["engineering"]
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
+
+        # Database access for MAPPED USERS (self-hosted databases)
         db_labels = {
           tier = ["dev"]
           team = ["engineering"]
+         "teleport.dev/db-access" = ["mapped"]
         }
-        db_names       = ["{{external.db_names}}", "*"]
-        db_roles       = ["{{external.db_roles}}", "reader"]
-        db_users       = ["{{external.db_users}}", "reader"]
+        # For mapped user databases, users connect as pre-existing database users
+        db_names = ["{{external.db_names}}", "*"]
+        db_users = ["{{external.db_users}}", "reader", "writer"] # Map to existing users
+        # db_roles not needed for mapped user access
+
         desktop_groups = ["Administrators"]
         impersonate = {
           users = ["Db"]
@@ -627,7 +632,7 @@ resource "kubectl_manifest" "role_dev_access" {
             kinds = ["k8s", "ssh"]
             modes = ["moderator", "observer"]
             name  = "Join dev sessions"
-            roles = ["dev-access"]
+            roles = ["dev-access", "dev-auto-access"]
           }
         ]
         kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
@@ -662,6 +667,94 @@ resource "kubectl_manifest" "role_dev_access" {
       }
       options = {
         create_db_user                 = false
+        create_desktop_user            = false
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        desktop_clipboard              = true
+        desktop_directory_sharing      = true
+        max_session_ttl                = "8h0m0s"
+        pin_source_ip                  = false
+        enhanced_recording             = ["command", "network"]
+      }
+    }
+  })
+}
+
+# Dev Auto Access Role - For AUTO USER PROVISIONING databases (RDS)
+resource "kubectl_manifest" "role_dev_auto_access" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name        = "dev-auto-access"
+      namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "Development access for auto user provisioning databases (RDS)"
+    }
+    spec = {
+      allow = {
+        # Same infrastructure access as regular dev-access
+        app_labels = {
+          tier = ["dev"]
+          team = ["engineering"]
+        }
+        aws_role_arns = ["{{external.aws_role_arns}}"]
+
+        # Database access for AUTO USER PROVISIONING
+        db_labels = {
+          tier = ["dev"]
+          team = ["engineering"]
+          "teleport.dev/db-access" = ["auto"]
+        }
+        db_names = ["{{external.db_names}}", "*"]
+        # For auto user provisioning, specify database ROLES that will be granted
+        db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+        # db_users will be auto-created based on the Teleport username
+
+        desktop_groups = ["Administrators"]
+        join_sessions = [
+          {
+            kinds = ["k8s", "ssh"]
+            modes = ["moderator", "observer"]
+            name  = "Join dev sessions"
+            roles = ["dev-access", "dev-auto-access"]
+          }
+        ]
+        kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
+        kubernetes_labels = {
+          tier = "dev"
+          team = "engineering"
+        }
+        kubernetes_resources = [
+          { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
+        ]
+        logins = [
+          "{{external.logins}}",
+          "{{email.local(external.username)}}",
+          "{{email.local(external.email)}}"
+        ]
+        node_labels = {
+          tier = ["dev"]
+          team = ["engineering"]
+        }
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+        windows_desktop_labels = {
+          tier = ["dev"]
+          team = ["engineering"]
+        }
+        windows_desktop_logins = [
+          "{{external.windows_logins}}",
+          "{{email.local(external.username)}}"
+        ]
+      }
+      options = {
+        # Auto user provisioning mode
+        create_db_user                 = true
+        create_db_user_mode            = "keep" # or "best_effort_drop"
         create_desktop_user            = true
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -675,6 +768,7 @@ resource "kubectl_manifest" "role_dev_access" {
   })
 }
 
+# Prod Access Role - For MAPPED USER databases
 resource "kubectl_manifest" "role_prod_access" {
   depends_on = [time_sleep.wait_for_operator]
 
@@ -682,8 +776,9 @@ resource "kubectl_manifest" "role_prod_access" {
     apiVersion = "resources.teleport.dev/v1"
     kind       = "TeleportRoleV7"
     metadata = {
-      name      = "prod-access"
-      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+      name        = "prod-access"
+      namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "Production access for mapped user databases and infrastructure"
     }
     spec = {
       allow = {
@@ -692,13 +787,16 @@ resource "kubectl_manifest" "role_prod_access" {
           team = ["engineering"]
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
+
+        # Database access for MAPPED USERS
         db_labels = {
           tier = ["prod", "dev"]
           team = ["engineering"]
+         "teleport.dev/db-access" = ["mapped"]
         }
-        db_names       = ["{{external.db_names}}", "*"]
-        db_roles       = ["{{external.db_roles}}", "dbadmin"]
-        db_users       = ["{{external.db_users}}", "postgres", "reader", "writer"]
+        db_names = ["{{external.db_names}}", "*"]
+        db_users = ["{{external.db_users}}", "reader", "writer"] # Map to existing users
+
         desktop_groups = ["Administrators"]
         impersonate = {
           users = ["Db"]
@@ -742,7 +840,90 @@ resource "kubectl_manifest" "role_prod_access" {
         ]
       }
       options = {
-        create_db_user                 = false
+        create_db_user                 = false # Mapped user mode
+        create_desktop_user            = false
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        desktop_clipboard              = true
+        desktop_directory_sharing      = true
+        max_session_ttl                = "2h0m0s"
+        pin_source_ip                  = false
+        enhanced_recording             = ["command", "network"]
+      }
+    }
+  })
+}
+
+# Prod Auto Access Role - For AUTO USER PROVISIONING databases
+resource "kubectl_manifest" "role_prod_auto_access" {
+  depends_on = [time_sleep.wait_for_operator]
+
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name        = "prod-auto-access"
+      namespace   = kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "Production access for auto user provisioning databases (RDS)"
+    }
+    spec = {
+      allow = {
+        app_labels = {
+          tier = ["prod", "dev"]
+          team = ["engineering"]
+        }
+        aws_role_arns = ["{{external.aws_role_arns}}"]
+
+        # Database access for AUTO USER PROVISIONING
+        db_labels = {
+          tier = ["prod", "dev"]
+          team = ["engineering"]
+          "teleport.dev/db-access" = ["auto"]
+        }
+        db_names = ["{{external.db_names}}", "*"]
+        db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+
+        desktop_groups = ["Administrators"]
+        join_sessions = [
+          {
+            kinds = ["k8s", "ssh"]
+            modes = ["moderator", "observer"]
+            name  = "Join prod sessions"
+            roles = ["*"]
+          }
+        ]
+        kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
+        kubernetes_labels = { "*" = "*" }
+        kubernetes_resources = [
+          { kind = "*", name = "*", namespace = "prod", verbs = ["*"] }
+        ]
+        logins = [
+          "{{external.logins}}",
+          "{{email.local(external.username)}}",
+          "{{email.local(external.email)}}",
+          "ubuntu", "ec2-user"
+        ]
+        node_labels = {
+          tier = ["prod", "dev"]
+          team = ["engineering"]
+        }
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+        windows_desktop_labels = {
+          tier = ["prod", "dev"]
+          team = ["engineering"]
+        }
+        windows_desktop_logins = [
+          "{{external.windows_logins}}",
+          "{{email.local(external.username)}}",
+          "Administrator"
+        ]
+      }
+      options = {
+        create_db_user                 = true
+        create_db_user_mode            = "keep" # Auto user provisioning mode
         create_desktop_user            = true
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -769,8 +950,8 @@ resource "kubectl_manifest" "role_prod_reviewer" {
     spec = {
       allow = {
         review_requests = {
-          preview_as_roles = ["access", "prod-access"]
-          roles            = ["access", "prod-access"]
+          preview_as_roles = ["access", "prod-access", "prod-auto-access"]
+          roles            = ["access", "prod-access", "prod-auto-access"]
         }
       }
     }
@@ -790,7 +971,7 @@ resource "kubectl_manifest" "role_prod_requester" {
     spec = {
       allow = {
         request = {
-          roles           = ["prod-access"]
+          roles           = ["prod-access", "prod-auto-access"]
           search_as_roles = ["access", "prod-access"]
         }
       }
@@ -830,7 +1011,7 @@ resource "kubectl_manifest" "access_list_support_engineers" {
         roles = ["manager"]
       }
       grants = {
-        roles = ["dev-access"]
+        roles = ["dev-access", "dev-auto-access"]
       }
       membership_requires = {
         roles = ["engineer"]
