@@ -296,7 +296,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "session_recordings" {
 # Data source for current AWS account
 data "aws_caller_identity" "current" {}
 
-# IAM policy for Teleport auth service
+# IAM policy for Teleport auth service - update for multipart uploads
 resource "aws_iam_policy" "teleport_auth" {
   name        = "${var.proxy_address}-auth-policy"
   description = "IAM policy for Teleport auth service"
@@ -338,7 +338,7 @@ resource "aws_iam_policy" "teleport_auth" {
           "s3:ListBucket",
           "s3:ListBucketVersions",
           "s3:GetBucketVersioning",
-          "s3:ListMultipartUploads"
+          "s3:ListBucketMultipartUploads"  # FIXED: was s3:ListMultipartUploads
         ]
         Resource = [
           aws_s3_bucket.session_recordings.arn
@@ -349,7 +349,9 @@ resource "aws_iam_policy" "teleport_auth" {
         Action = [
           "s3:GetObject",
           "s3:GetObjectVersion",
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:AbortMultipartUpload",         # ADDED: Required for session recordings
+          "s3:ListMultipartUploadParts"     # ADDED: Required for session recordings
         ]
         Resource = [
           "${aws_s3_bucket.session_recordings.arn}/*"
