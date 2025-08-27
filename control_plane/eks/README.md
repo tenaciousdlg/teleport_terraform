@@ -136,7 +136,7 @@ ver_cluster = "1.33"
 # Basic Configuration
 region       = "us-east-2"
 proxy_address = "presales.teleportdemo.com"  # Your Teleport cluster FQDN
-user        = "admin@company.com"           # user for ACME certificates
+user        = "admin@company.com"           # user for cert-manager certificates
 
 # Teleport Version (update this for monthly releases)
 teleport_version = "18.1.6"
