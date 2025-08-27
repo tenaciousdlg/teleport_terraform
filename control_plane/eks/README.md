@@ -1,8 +1,18 @@
-# Teleport Demo Environment - Improved Workflow
+# Teleport Demo Environment - EKS Deployment for Solutions Engineers
 
-> **Fast, automated Teleport deployments optimized for monthly updates and customer demos**
+> ⚠️ **Demo Environment**: Optimized for SE demonstrations and rapid updates. Not for production use.
 
 This repository provides an improved workflow for managing Teleport demo environments that eliminates manual coordination, enables 2-3 minute updates, and fixes common CRD management issues.
+
+![Demo Environment](https://img.shields.io/badge/Purpose-Demo%20Environment-yellow)
+![Cost Optimized](https://img.shields.io/badge/Cost-~$180%2Fmonth-green)
+![Update Time](https://img.shields.io/badge/Updates-2--3%20minutes-blue)
+
+## 🔗 Quick Links
+- [Cost Profile](#-cost-profile) - ~$180/month optimized deployment
+- [Fast Updates](#-fast-update-workflow) - 2-3 minute version changes
+- [Troubleshooting](#-troubleshooting) - Common issues and solutions
+- [What's Excluded](#-intentionally-omitted-cost-savings) - Cost-saving decisions
 
 ## 🎯 Key Benefits
 
@@ -31,16 +41,27 @@ This repository provides an improved workflow for managing Teleport demo environ
 
 📄 update-teleport.sh      # Fast update management script
 ```
+## 💰 Cost Profile
+
+This demo environment is optimized for cost (~$160-180/month):
+- Single NAT Gateway (saves $90/month vs multi-AZ)
+- SPOT instances for workers (saves 70% vs on-demand)
+- No high availability replicas
+- DynamoDB on-demand billing
+
+For comparison, a production-grade deployment would cost $400-500/month.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-Ensure you have these tools installed:
 - **Terraform** v1.3+
 - **AWS CLI** v2.0+ (configured with credentials)
 - **kubectl** v1.25+
 - **Helm** v3.0+
+- **Valid Teleport license** (place in `2-kubernetes-config/license.pem`)
+- **Route53 hosted zone** (optional, for DNS management)
+- **Okta account** with SAML app configured
 
 ### 1. Initial Setup
 
@@ -84,10 +105,10 @@ terraform apply
 
 ```bash
 # Make script executable
-chmod +x ../update-teleport.sh
+chmod +x ./update-teleport.sh
 
 # Check deployment status
-../update-teleport.sh status
+./update-teleport.sh status
 
 # Access your demo environment
 open https://your-cluster-name.yourdomain.com
@@ -101,7 +122,7 @@ open https://your-cluster-name.yourdomain.com
 # Basic Infrastructure
 region = "us-east-2"
 name   = "presales"              # Used for cluster naming
-user   = "your-email@company.com"
+user   = "your-user@company.com"
 
 # Kubernetes Version
 ver_cluster = "1.33"
@@ -114,11 +135,11 @@ ver_cluster = "1.33"
 ```hcl
 # Basic Configuration
 region       = "us-east-2"
-cluster_name = "presales.teleportdemo.com"  # Your Teleport cluster FQDN
-email        = "admin@company.com"           # Email for ACME certificates
+proxy_address = "presales.teleportdemo.com"  # Your Teleport cluster FQDN
+user        = "admin@company.com"           # user for ACME certificates
 
 # Teleport Version (update this for monthly releases)
-teleport_ver = "17.5.3"
+teleport_version = "18.1.6"
 
 # DNS Configuration (optional - leave empty to skip DNS setup)
 domain_name = "teleportdemo.com"  # Your Route53 hosted zone
@@ -297,6 +318,23 @@ app_labels = { tier = ["dev", "prod"] }
 ./update-teleport.sh status
 ```
 
+### Certificate Troubleshooting
+
+If certificates aren't issuing:
+```bash
+# Check cert-manager logs
+kubectl logs -n cert-manager deployment/cert-manager
+
+# Check certificate status
+kubectl describe certificate teleport-tls -n teleport-cluster
+
+# Verify DNS challenge
+kubectl describe challenge -n teleport-cluster
+
+# Check IAM role association
+kubectl describe sa cert-manager -n cert-manager | grep role-arn
+```
+
 ## 📈 Performance Comparison
 
 | Task | Old Approach | New Approach | Time Saved |
@@ -382,16 +420,24 @@ terraform apply -var-file="staging.tfvars"
 - [EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)
 - [Terraform AWS Provider Docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 
+## 🚫 Intentionally Omitted (Cost Savings)
+
+- High Availability (`replicaCount: 1`)
+- Multi-AZ NAT Gateways
+- Production-grade instance types
+- Prometheus/Grafana monitoring stack
+- Backup automation
+- Advanced pod autoscaling
+
 ---
 
 ## 🎯 Success Metrics
 
-With this improved workflow, you should achieve:
-- ✅ **2-3 minute Teleport updates** instead of 15+ minutes
-- ✅ **Zero manual coordination** between infrastructure and application layers
-- ✅ **Reliable monthly updates** without CRD conflicts
-- ✅ **Easy rollbacks** without infrastructure risk
-- ✅ **Professional demo environment** with proper DNS and SSL
-- ✅ **Comprehensive role-based access** demonstration capabilities
+- ✅ **Professional appearance** with valid SSL certificates
+- ✅ **Quick setup** - Under 20 minutes from scratch
+- ✅ **Fast updates** - 2-3 minute version changes
+- ✅ **Cost effective** - Under $200/month
+- ✅ **Demo ready** - Includes test apps and multiple auth methods
+- ✅ **Reliable** - No ACME failures during customer demos
 
 **Happy Teleporting!** 🚀
