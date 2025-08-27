@@ -400,8 +400,230 @@ resource "aws_iam_role_policy_attachment" "teleport_auth" {
   policy_arn = aws_iam_policy.teleport_auth.arn
 }
 
-# Service accounts are created by Helm chart when serviceAccount.create = true
+# =====================================================
+# CERT-MANAGER INSTALLATION
+# =====================================================
 
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  namespace  = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  version    = "v1.16.2"
+
+  create_namespace = true
+  wait            = true
+  timeout         = 300
+
+  set {
+    name  = "crds.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "global.leaderElection.namespace"
+    value = "cert-manager"
+  }
+
+  set {
+    name  = "prometheus.enabled"
+    value = "true"
+  }
+}
+
+resource "kubernetes_annotations" "cert_manager_sa" {
+  count       = var.domain_name != "" ? 1 : 0
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  
+  metadata {
+    name      = "cert-manager"
+    namespace = "cert-manager"
+  }
+
+  annotations = {
+    "eks.amazonaws.com/role-arn" = aws_iam_role.cert_manager[0].arn
+  }
+
+  depends_on = [
+    helm_release.cert_manager,
+    aws_iam_role_policy_attachment.cert_manager_route53
+  ]
+
+  force = true
+}
+
+# Wait for cert-manager to be ready
+resource "time_sleep" "wait_for_cert_manager" {
+  depends_on      = [kubernetes_annotations.cert_manager_sa]
+  create_duration = "90s"
+}
+
+# =====================================================
+# CERT-MANAGER CLUSTER ISSUERS
+# =====================================================
+
+# Let's Encrypt Production Issuer
+resource "kubectl_manifest" "letsencrypt_prod_issuer" {
+  depends_on = [time_sleep.wait_for_cert_manager]
+
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "letsencrypt-prod"
+    }
+    spec = {
+      acme = {
+        server = "https://acme-v02.api.letsencrypt.org/directory"
+        email  = var.user
+        privateKeySecretRef = {
+          name = "letsencrypt-prod-account-key"
+        }
+        solvers = [
+          {
+            dns01 = {
+              route53 = {
+                region = var.region
+              }
+            }
+            selector = {
+              dnsZones = [var.domain_name]
+            }
+          }
+        ]
+      }
+    }
+  })
+}
+
+resource "time_sleep" "wait_for_issuer" {
+  depends_on      = [kubectl_manifest.letsencrypt_prod_issuer]
+  create_duration = "60s"
+}
+
+
+# Optional: Self-signed issuer for internal/dev use
+resource "kubectl_manifest" "selfsigned_issuer" {
+  depends_on = [time_sleep.wait_for_cert_manager]
+
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "selfsigned-issuer"
+    }
+    spec = {
+      selfSigned = {}
+    }
+  })
+}
+
+# =====================================================
+# TELEPORT CERTIFICATE
+# =====================================================
+
+resource "kubectl_manifest" "teleport_certificate" {
+  depends_on = [
+    time_sleep.wait_for_issuer,
+    kubernetes_namespace.teleport_cluster
+  ]
+
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "teleport-tls"
+      namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      secretName = "teleport-tls"
+      issuerRef = {
+        name = "letsencrypt-prod"
+        kind = "ClusterIssuer"
+      }
+      dnsNames = [
+        var.proxy_address,
+        "*.${var.proxy_address}"
+      ]
+      duration    = "2160h"  # 90 days
+      renewBefore = "720h"   # 30 days before expiry
+    }
+  })
+}
+
+# =====================================================
+# IAM FOR CERT-MANAGER DNS-01 CHALLENGE
+# =====================================================
+
+# Only needed if using DNS-01 validation with Route53
+data "aws_route53_zone" "teleport" {
+  count = var.domain_name != "" ? 1 : 0
+  name  = var.domain_name
+}
+
+resource "aws_iam_policy" "cert_manager_route53" {
+  count       = var.domain_name != "" ? 1 : 0
+  name        = "${var.proxy_address}-cert-manager-route53"
+  description = "Policy for cert-manager to manage Route53 records"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:ListHostedZones",
+          "route53:ListHostedZonesByName",
+          "route53:ListResourceRecordSets",
+          "route53:GetChange"
+        ]
+        Resource = ["*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:ChangeResourceRecordSets"
+        ]
+        Resource = [
+          "arn:aws:route53:::hostedzone/${data.aws_route53_zone.teleport[0].zone_id}"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "cert_manager" {
+  count = var.domain_name != "" ? 1 : 0
+  name  = "${var.proxy_address}-cert-manager"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = data.aws_iam_openid_connect_provider.eks.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+            "${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:cert-manager:cert-manager"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cert_manager_route53" {
+  count      = var.domain_name != "" ? 1 : 0
+  role       = aws_iam_role.cert_manager[0].name
+  policy_arn = aws_iam_policy.cert_manager_route53[0].arn
+}
+
+# Service accounts are created by Helm chart when serviceAccount.create = true. In this deployment Terraform will configure service accounts and Teleport will reference them via the helm chart resource 
 # =====================================================
 # TELEPORT HELM/SERVICE DEPLOYMENT
 # =====================================================
@@ -446,11 +668,16 @@ resource "helm_release" "teleport_cluster" {
     jsonencode({
       clusterName       = var.proxy_address
       proxyListenerMode = "multiplex"
-      acme              = true
-      acmeEmail         = var.user
+      # DISABLE ACME - using cert-manager instead
+      acme      = false
+      # CERT-MANAGER CERTIFICATE
+      tls = {
+        existingSecretName = "teleport-tls"
+      }
       enterprise        = fileexists("${path.module}/license.pem")
       labels = {
         tier = "dev"
+        team = "engineering"
       }
       operator = {
         enabled = true
@@ -493,6 +720,7 @@ resource "helm_release" "teleport_cluster" {
     })
   ]
   depends_on = [
+    kubectl_manifest.teleport_certificate,
     kubernetes_secret.license,
     kubernetes_service_account.teleport_auth,
     kubernetes_service_account.teleport_proxy,
@@ -1099,4 +1327,14 @@ output "dynamodb_events_table" {
 output "s3_session_recordings_bucket" {
   description = "S3 bucket for session recordings"
   value       = aws_s3_bucket.session_recordings.id
+}
+
+output "certificate_status" {
+  description = "Commands to check certificate status"
+  value = {
+    check_certificate   = "kubectl describe certificate teleport-tls -n teleport-cluster"
+    check_secret        = "kubectl describe secret teleport-tls -n teleport-cluster"
+    cert_manager_logs   = "kubectl logs -n cert-manager deployment/cert-manager"
+    certificate_details = "kubectl get certificate -n teleport-cluster teleport-tls -o yaml"
+  }
 }
