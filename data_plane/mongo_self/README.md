@@ -17,6 +17,15 @@ It mirrors the official [Teleport self-hosted MongoDB guide](https://goteleport.
 
 ## Usage
 
+0. Export variables related to your Teleport cluster (or fill these in when prompted).
+
+```bash
+export TF_VAR_user="dlg@example.com"
+export TF_VAR_proxy_address="demo.example.com"
+export TF_VAR_teleport_version="18.1.6"
+export TF_VAR_region="us-east-2"
+```
+
 1. Authenticate to your Teleport cluster:
 
 ```bash
