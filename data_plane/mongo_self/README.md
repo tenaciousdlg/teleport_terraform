@@ -46,8 +46,8 @@ terraform apply
 
 4. Access:
 ```bash
-tsh db ls --labels=tier=dev
-tsh db connect mongodb-dev --db-user=reader
+tsh db ls 
+tsh db connect --db-user=reader --db-name dev mongodb-dev
 ```
 
 5. Tear down:
