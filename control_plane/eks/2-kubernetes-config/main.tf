@@ -114,14 +114,14 @@ resource "kubernetes_namespace" "teleport_cluster" {
 
 # License secret (conditional)
 resource "kubernetes_secret" "license" {
-  count = fileexists("${path.module}/license.pem") ? 1 : 0
+  count = fileexists("${path.module}/../../license.pem") ? 1 : 0
 
   metadata {
     name      = "license"
     namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
   }
   data = {
-    "license.pem" = file("${path.module}/license.pem")
+    "license.pem" = file("${path.module}/../../license.pem")
   }
   type = "Opaque"
 }
@@ -674,7 +674,7 @@ resource "helm_release" "teleport_cluster" {
       tls = {
         existingSecretName = "teleport-tls"
       }
-      enterprise        = fileexists("${path.module}/license.pem")
+      enterprise        = fileexists("${path.module}/../../license.pem")
       labels = {
         tier = "dev"
         team = "engineering"
