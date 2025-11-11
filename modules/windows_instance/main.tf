@@ -19,11 +19,10 @@ resource "random_string" "windows" {
 }
 
 resource "aws_instance" "windows" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
-  security_groups             = var.security_group_ids
-  associate_public_ip_address = true
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = var.security_group_ids
   user_data = templatefile("${path.module}/windows.tpl", {
     User            = local.user
     Password        = random_string.windows.result
