@@ -110,7 +110,7 @@ variable "maintenance_window" {
 }
 
 variable "team" {
-  description = "Team label for SSH nodes"
+  description = "Team label for RBAC"
   type        = string
   default     = "engineering"
 }
