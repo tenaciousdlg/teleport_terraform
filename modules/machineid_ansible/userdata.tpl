@@ -42,7 +42,9 @@ db_service:
 EOF
 
 systemctl enable teleport
-systemctl restart teleport
+systemctl start teleport
+
+# Note: Not waiting for teleport since tbot is independent
 
 # Configure Machine ID (tbot)
 cat <<-EOF > /etc/tbot.yaml
@@ -58,47 +60,78 @@ outputs:
 - type: identity
   destination:
     type: directory
-    # For this guide, /opt/machine-id is used as the destination directory.
-    # You may wish to customize this. Multiple outputs cannot share the same
-    # destination.
     path: /opt/machine-id
 EOF
-# creates a data directory for machineid services
+
+# Create system user and directories with proper permissions
+useradd --system --shell /bin/false teleport || true
 mkdir -p /var/lib/teleport/bot
-# adds a OS user called teleport that registers as a system user 
-useradd --system teleport
-# gives the system user teleport ownership of the teleport data dir (which includes the bot subdirectory)
-chown -R teleport:teleport /var/lib/teleport/
-# creates the output dir for machineid(tbot)
 mkdir -p /opt/machine-id
-# gives the teleport user ownership of the machineid output dir
+
+# Set up proper group ownership for machine-id directory
+chown -R teleport:teleport /var/lib/teleport/
 chown -R teleport:teleport /opt/machine-id
-# adds the ec2-user user to the teleport group
+
+# Add ec2-user to teleport group for access
 usermod -aG teleport ec2-user
-# Create tbot systemd service
+
+# Set group permissions on machine-id directory
+chmod 2750 /opt/machine-id  # setgid bit ensures new files inherit group ownership
+chmod -R g+rX /opt/machine-id  # Give group read and execute permissions
+
+# Create tbot systemd service - independent of local teleport service
 cat <<-EOF > /etc/systemd/system/tbot.service
 [Unit]
 Description=tbot - Teleport Machine ID Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=teleport
 Group=teleport
 Restart=always
-RestartSec=5
+RestartSec=15
+StartLimitBurst=5
+StartLimitIntervalSec=300
+TimeoutStartSec=120
 Environment="TELEPORT_ANONYMOUS_TELEMETRY=1"
+UMask=0027
 ExecStart=/usr/local/bin/tbot start -c /etc/tbot.yaml
-ExecReload=/bin/kill -HUP $$MAINPID
-PIDFile=/run/tbot.pid
+ExecReload=/bin/kill -HUP \$MAINPID
 LimitNOFILE=524288
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-#brings the service up
+# Reload systemd and enable tbot
 systemctl daemon-reload
+systemctl enable tbot
+
+# Start tbot - it will connect independently to the proxy server
+echo "Starting tbot service..."
+systemctl start tbot
+
+# Wait for tbot to generate identity files (optional check)
+echo "Checking if Machine ID identity is ready..."
+for i in {1..30}; do
+    if [ -f /opt/machine-id/identity ]; then
+        echo "Machine ID identity is ready"
+        # Fix permissions on generated files to be group-readable
+        chmod -R g+r /opt/machine-id/
+        break
+    fi
+    echo "Waiting for identity file... ($i/30)"
+    sleep 2
+done
+
+if [ ! -f /opt/machine-id/identity ]; then
+    echo "WARNING: Machine ID identity was not created yet. This may be normal - tbot will continue trying."
+    echo "Check service status with: systemctl status tbot"
+else
+    echo "Fixed permissions on machine-id files for group access"
+fi
 
 # Configure Ansible
 mkdir -p /home/ec2-user/ansible
@@ -154,7 +187,18 @@ cat <<-EOF > /home/ec2-user/ansible/playbook.yaml
 EOF
 
 chown -R ec2-user:ec2-user /home/ec2-user/ansible
-# update perissions for teleport group
-chmod 750 -R /opt/machine-id/*
-systemctl enable tbot
-systemctl restart tbot
+
+# Create a helper script to fix machine-id permissions if needed
+cat <<-'EOF' > /usr/local/bin/fix-machine-id-perms
+#!/bin/bash
+# Fix permissions on machine-id files for group access
+chmod -R g+r /opt/machine-id/
+echo "Fixed permissions on /opt/machine-id/ files"
+EOF
+chmod +x /usr/local/bin/fix-machine-id-perms
+
+echo "Setup complete. Both services are independent:"
+echo "Teleport SSH service status:"
+systemctl status teleport --no-pager -l
+echo "Machine ID (tbot) service status:"
+systemctl status tbot --no-pager -l
