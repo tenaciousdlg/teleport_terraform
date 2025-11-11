@@ -73,11 +73,11 @@ data "aws_ami" "linux" {
 }
 
 module "network" {
-  source      = "../../modules/network"
-  cidr_vpc    = "10.0.0.0/16"
-  cidr_subnet = "10.0.1.0/24"
+  source             = "../../modules/network"
+  cidr_vpc           = "10.0.0.0/16"
+  cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
-  env         = var.env
+  env                = var.env
 }
 
 module "mysql_instance" {
@@ -198,7 +198,7 @@ module "grafana_registration" {
   uri           = "http://localhost:3000"
   public_addr   = "grafana-${var.env}.${var.proxy_address}"
   labels = {
-    tier              = var.env
+    tier               = var.env
     "teleport.dev/app" = "grafana"
   }
   rewrite_headers = [

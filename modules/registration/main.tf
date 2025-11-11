@@ -14,7 +14,7 @@ resource "teleport_database" "this" {
     name        = var.name
     description = var.description
     labels = merge(var.labels, {
-      "teleport.dev/origin" = "dynamic"
+      "teleport.dev/origin"    = "dynamic"
       "teleport.dev/db-access" = var.db_access_pattern
     })
   }

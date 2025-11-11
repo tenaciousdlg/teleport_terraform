@@ -164,9 +164,9 @@ resource "teleport_database" "rds_mysql" {
     name        = "rds-mysql-${var.env}"
     description = "RDS MySQL with auto user provisioning in ${var.env}"
     labels = {
-      tier                  = var.env
-      team                  = var.team
-      "teleport.dev/origin" = "dynamic"
+      tier                     = var.env
+      team                     = var.team
+      "teleport.dev/origin"    = "dynamic"
       "teleport.dev/db-access" = "auto"
     }
   }

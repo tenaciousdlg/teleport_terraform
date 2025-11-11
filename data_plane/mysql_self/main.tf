@@ -78,13 +78,13 @@ module "mysql_instance" {
 }
 
 module "mysql_registration" {
-  source        = "../../modules/registration"
-  resource_type = "database"
-  name          = "mysql-${var.env}"
-  description   = "Self-hosted MySQL database in ${var.env}"
-  protocol      = "mysql"
-  uri           = "localhost:3306"
-  ca_cert_chain = module.mysql_instance.ca_cert
+  source            = "../../modules/registration"
+  resource_type     = "database"
+  name              = "mysql-${var.env}"
+  description       = "Self-hosted MySQL database in ${var.env}"
+  protocol          = "mysql"
+  uri               = "localhost:3306"
+  ca_cert_chain     = module.mysql_instance.ca_cert
   db_access_pattern = "mapped"
   labels = {
     tier = var.env

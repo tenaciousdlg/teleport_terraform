@@ -77,13 +77,13 @@ data "aws_ami" "linux" {
 # =============================================================================
 module "network" {
   source                  = "../../modules/network"
-  cidr_vpc               = "10.0.0.0/16"
-  cidr_subnet            = "10.0.1.0/24"
-  cidr_public_subnet     = "10.0.0.0/24"
-  env                    = var.env
+  cidr_vpc                = "10.0.0.0/16"
+  cidr_subnet             = "10.0.1.0/24"
+  cidr_public_subnet      = "10.0.0.0/24"
+  env                     = var.env
   create_secondary_subnet = true
-  cidr_secondary_subnet  = "10.0.2.0/24"
-  create_db_subnet_group = true
+  cidr_secondary_subnet   = "10.0.2.0/24"
+  create_db_subnet_group  = true
 }
 
 # =============================================================================
@@ -205,7 +205,7 @@ module "ssh_nodes" {
   user               = var.user
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
-  agent_count        = 3  # Deploy multiple nodes for demo
+  agent_count        = 3 # Deploy multiple nodes for demo
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"
   subnet_id          = module.network.subnet_id
@@ -338,20 +338,20 @@ output "demo_resources" {
   value = {
     # Databases
     mysql_endpoint     = "mysql-${var.env}"
-    postgres_endpoint  = "postgres-${var.env}" 
+    postgres_endpoint  = "postgres-${var.env}"
     mongodb_endpoint   = "mongodb-${var.env}"
     rds_mysql_endpoint = module.rds_mysql.database_name
-    
+
     # Applications
     grafana_url = "https://grafana-${var.env}.${var.proxy_address}"
     httpbin_url = "https://httpbin-${var.env}.${var.proxy_address}"
-    
+
     # Windows Desktop
     windows_desktop = module.windows_instance.hostname
-    
+
     # Machine ID
     ansible_host = "Ansible automation configured with Machine ID"
-    
+
     # SSH Nodes
     ssh_node_count = 3
   }
@@ -366,11 +366,11 @@ output "verification_commands" {
       apps      = "tsh apps ls --labels=tier=${var.env}"
       desktops  = "tsh desktops ls --labels=tier=${var.env}"
     }
-    
+
     demo_connections = {
       ssh_access      = "tsh ssh ec2-user@${var.env}-ssh-0"
       mysql_access    = "tsh db connect mysql-${var.env} --db-user=reader"
-      postgres_access = "tsh db connect postgres-${var.env} --db-user=reader" 
+      postgres_access = "tsh db connect postgres-${var.env} --db-user=reader"
       mongodb_access  = "tsh db connect mongodb-${var.env} --db-user=reader"
       rds_mysql       = "tsh db connect ${module.rds_mysql.database_name}"
       grafana_access  = "tsh apps login grafana-${var.env}"
@@ -385,15 +385,15 @@ output "role_based_access_demo" {
     dev_role_demo = [
       "# Users with dev-access role can access:",
       "tsh ls --labels=tier=dev",
-      "tsh db ls --labels=tier=dev", 
+      "tsh db ls --labels=tier=dev",
       "tsh apps ls --labels=tier=dev"
     ]
-    
+
     prod_role_demo = [
       "# Users with prod-access role need approval for prod resources",
       "# But can access dev resources directly"
     ]
-    
+
     request_access = [
       "# Request elevated access:",
       "tsh request create --roles=prod-access --reason='Customer demo'"
