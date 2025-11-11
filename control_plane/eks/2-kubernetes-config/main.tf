@@ -750,7 +750,7 @@ resource "kubectl_manifest" "saml_connector_okta" {
     apiVersion = "resources.teleport.dev/v2"
     kind       = "TeleportSAMLConnector"
     metadata = {
-      name      = "okta-dlg"
+      name      = "okta-integrator"
       namespace = kubernetes_namespace.teleport_cluster.metadata[0].name
     }
     spec = {
