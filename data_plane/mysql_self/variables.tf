@@ -24,6 +24,6 @@ variable "teleport_version" {
 }
 
 variable "team" {
-  description = "Team label for desktop service"
+  description = "Team label for RBAC"
   type        = string
 }
