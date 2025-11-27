@@ -1,14 +1,61 @@
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-2"
+}
+
 variable "proxy_address" {
+  description = "Name of your Teleport cluster (e.g. teleport.example.com)"
   type        = string
-  description = "Host of the Teleport Proxy Service"
 }
 
-variable "okta_sso_app" {
+variable "domain_name" {
+  description = "Parent domain name for DNS records (e.g. demo.com)."
   type        = string
-  description = "Value of the Okta SSO URL | ex: dev-4389181381.okta.com/app/e4kj324hj13h4j3k13"
+  default     = ""
 }
 
-variable "identity_path" {
+variable "user" {
+  description = "Email for Teleport admin and ACME certificate"
   type        = string
-  description = "file path location of identity file for teleport terraform provider"
+}
+
+variable "teleport_version" {
+  description = "Teleport version to deploy (e.g. 18.0.0)"
+  type        = string
+}
+
+variable "okta_metadata_url" {
+  description = "Okta SAML metadata URL"
+  type        = string
+}
+
+variable "okta_preview_metadata_url" {
+  description = "Okta preview SAML metadata URL (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_okta_preview" {
+  description = "Whether to enable the Okta preview SAML connector"
+  type        = bool
+  default     = false
+}
+
+variable "enable_access_lists" {
+  description = "Whether to enable access lists (may not be available in all Teleport versions)"
+  type        = bool
+  default     = false
+}
+
+variable "use_dns_validation" {
+  description = "Use DNS-01 validation instead of HTTP-01"
+  type        = bool
+  default     = true # Recommended for wildcard certificates
+}
+
+variable "certificate_duration" {
+  description = "Certificate validity duration"
+  type        = string
+  default     = "2160h" # 90 days
 }
