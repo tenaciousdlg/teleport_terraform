@@ -24,14 +24,8 @@ provider "teleport" {
 resource "teleport_saml_connector" "okta" {
   version = "v2"
 
-  # Ensure all mapped roles exist before updating the connector
   depends_on = [
     teleport_role.base_user,
-    teleport_role.dev_environment_access,
-    teleport_role.prod_readonly_access,
-    teleport_role.prod_full_access,
-    teleport_role.engineering_tools_access,
-    teleport_role.prod_access_requester,
     teleport_role.access_reviewer,
   ]
 
@@ -39,45 +33,27 @@ resource "teleport_saml_connector" "okta" {
     name = "okta"
   }
 
-  # Keep SAML fairly minimal and let Access Lists & traits do the heavy lifting
   spec = {
     attributes_to_roles = [
-      # Everyone who authenticates gets the base-user role
+      # All authenticated users -> base-user
       {
         name  = "groups"
         value = "Everyone"
-        roles = [
-          "base-user"
-        ]
+        roles = ["base-user"]
       },
-      # Engineering org – daily dev + tools + can request prod read-only
+      # Optionally: admins/security get reviewer powers
       {
         name  = "groups"
-        value = "engineers"
-        roles = [
-          "base-user",
-          "dev-environment-access",
-          "engineering-tools-access",
-          "prod-access-requester",
-          "access-reviewer"
-        ]
-      },
-      # Devs subset – same as engineers (you can tighten later if desired)
-      {
-        name  = "groups"
-        value = "devs"
-        roles = [
-          "base-user",
-          "dev-environment-access",
-          "engineering-tools-access",
-          "prod-access-requester"
-        ]
+        value = "security-team"
+        roles = ["base-user", "access-reviewer"]
       }
+      # NOTE: no direct mapping to dev/prod env roles here.
+      # Those are granted only via Access Lists.
     ]
 
     acs                     = "https://${var.proxy_address}/v1/webapi/saml/acs/okta"
     entity_descriptor_url   = var.okta_metadata_url
-    service_provider_issuer = "https://${var.proxy_address}/sso/saml/metadata"
+    service_provider_issuer = "https://${var.proxy_address}/v1/webapi/saml/acs/okta"
   }
 }
 
@@ -100,7 +76,7 @@ resource "teleport_auth_preference" "main" {
 
   spec = {
     type          = "saml"
-    second_factor = "on"
+    second_factor = "webauthn"
 
     webauthn = {
       rp_id = var.proxy_address
@@ -396,35 +372,27 @@ resource "teleport_access_list" "engineering_team" {
       }
     ]
 
+    # Very lightweight guardrail:
+    # - Must at least be a Teleport user (base-user)
+    # You *can* add a groups trait check here if you want to keep it aligned
+    # with an IdP group, but we're intentionally not hard-tying it to Okta.
     membership_requires = {
-      roles = ["base-user"]
-      traits = [
-        {
-          key    = "groups"
-          values = ["engineers", "devs", "sre", "platform"]
-        }
-      ]
+      roles = [teleport_role.base_user.metadata.name]
     }
 
-    ownership_requires = {
-      traits = [
-        {
-          key    = "groups"
-          values = ["engineering-managers", "senior-engineers"]
-        }
-      ]
-    }
-
+    # Team membership grants:
+    # - base-user (if not already)
+    # - engineering tools access
     grants = {
       roles = [
-        "base-user",
-        "engineering-tools-access"
+        teleport_role.base_user.metadata.name,
+        teleport_role.engineering_tools_access.metadata.name
       ]
     }
 
     audit = {
       recurrence = {
-        frequency    = 3 # Every 3 months
+        frequency    = 3 # every 3 months
         day_of_month = 1
       }
     }
@@ -436,6 +404,7 @@ resource "teleport_access_list" "engineering_team" {
 ##################################################################################
 
 # Development Access List (static/terraform-managed membership)
+# Dev environment access (Terraform-managed)
 resource "teleport_access_list" "dev_environment" {
   header = {
     version = "v1"
@@ -447,7 +416,7 @@ resource "teleport_access_list" "dev_environment" {
   spec = {
     title       = "Development Environment Access"
     description = "Access to development tier resources for daily work"
-    type        = "static"
+    type        = "static" # Terraform manages membership
 
     owners = [
       {
@@ -464,18 +433,20 @@ resource "teleport_access_list" "dev_environment" {
   }
 }
 
-# Add engineering team to dev access via nested Access List membership
+# Add engineering team list as a member of dev access
 resource "teleport_access_list_member" "dev_access_engineering" {
   header = {
     version = "v1"
     metadata = {
+      # upstream list (the "member")
       name = teleport_access_list.engineering_team.id
     }
   }
 
   spec = {
+    # target list (the container)
     access_list     = teleport_access_list.dev_environment.id
-    membership_kind = 2 # list membership
+    membership_kind = 2 # LIST membership
   }
 }
 
@@ -491,6 +462,7 @@ resource "teleport_access_list" "prod_readonly" {
   spec = {
     title       = "Production Read-Only Access"
     description = "Read-only access to production for troubleshooting"
+    # type omitted => default (UI/SCIM/tctl manage membership)
 
     owners = [
       {
@@ -498,19 +470,16 @@ resource "teleport_access_list" "prod_readonly" {
         description = "Platform team admin"
       },
       {
+        # Engineering managers (represented by the team list)
         name            = teleport_access_list.engineering_team.id
         membership_kind = 2
         description     = "Engineering team managers"
       }
     ]
 
+    # Light guardrail if you want one:
     membership_requires = {
-      traits = [
-        {
-          key    = "groups"
-          values = ["engineers", "devs"]
-        }
-      ]
+      roles = [teleport_role.base_user.metadata.name]
     }
 
     grants = {
@@ -531,7 +500,7 @@ resource "teleport_access_list" "prod_readonly" {
 
     audit = {
       recurrence = {
-        frequency    = 1 # monthly review
+        frequency    = 1 # monthly
         day_of_month = 1
       }
     }
@@ -549,7 +518,9 @@ resource "teleport_access_list" "prod_oncall" {
 
   spec = {
     title       = "Production On-Call Access"
-    description = "Full production access for on-call engineers. Auto-expires after rotation."
+    description = "Full production access for on-call engineers. Auto-reviewed on a schedule."
+
+    # type omitted => default; on-call rotation managed in UI/tctl/SCIM
 
     owners = [
       {
@@ -559,13 +530,7 @@ resource "teleport_access_list" "prod_oncall" {
     ]
 
     membership_requires = {
-      roles = ["base-user"]
-      traits = [
-        {
-          key    = "groups"
-          values = ["engineers"]
-        }
-      ]
+      roles = [teleport_role.base_user.metadata.name]
     }
 
     grants = {
@@ -576,8 +541,8 @@ resource "teleport_access_list" "prod_oncall" {
 
     audit = {
       recurrence = {
-        frequency    = 1 # every 1 month
-        day_of_month = 1 # on the 1st
+        frequency    = 1 # monthly review
+        day_of_month = 1
       }
       notifications = {
         start = "72h"
@@ -607,12 +572,7 @@ resource "teleport_access_list" "break_glass" {
     ]
 
     membership_requires = {
-      traits = [
-        {
-          key    = "groups"
-          values = ["senior-engineers", "security-team"]
-        }
-      ]
+      roles = [teleport_role.base_user.metadata.name]
     }
 
     grants = {
@@ -625,7 +585,7 @@ resource "teleport_access_list" "break_glass" {
 
     audit = {
       recurrence = {
-        frequency    = 1
+        frequency    = 1 # review monthly
         day_of_month = 15
       }
     }
@@ -639,21 +599,18 @@ resource "teleport_access_list" "break_glass" {
 # Requester for temporary production access
 resource "teleport_role" "prod_access_requester" {
   version = "v7"
-
   metadata = {
     name        = "prod-access-requester"
-    description = "Can request temporary production access"
+    description = "Can request temporary production read-only access"
   }
 
   spec = {
     allow = {
       request = {
-        # Can request prod-readonly-access via JIT
         roles           = [teleport_role.prod_readonly_access.metadata.name]
         search_as_roles = [teleport_role.prod_readonly_access.metadata.name]
         max_duration    = "8h"
 
-        # Require reason & ticket, but keep mapping simple here
         claims_to_roles = [
           {
             claim = "reason"
@@ -662,7 +619,7 @@ resource "teleport_role" "prod_access_requester" {
           }
         ]
 
-        # Single, simple threshold that only looks at allowed fields
+        # Simple policy: one approval is enough when they request prod readonly
         thresholds = [
           {
             approve = 1
@@ -678,7 +635,6 @@ resource "teleport_role" "prod_access_requester" {
 # Reviewer role for access requests
 resource "teleport_role" "access_reviewer" {
   version = "v7"
-
   metadata = {
     name        = "access-reviewer"
     description = "Can review and approve access requests"
@@ -687,21 +643,19 @@ resource "teleport_role" "access_reviewer" {
   spec = {
     allow = {
       review_requests = {
-        # Can review prod read-only and prod full access requests
         roles = [
           teleport_role.prod_readonly_access.metadata.name,
           teleport_role.prod_full_access.metadata.name
         ]
 
-        # Can preview as the same roles when reviewing
         preview_as_roles = [
           teleport_role.prod_readonly_access.metadata.name,
           teleport_role.prod_full_access.metadata.name
         ]
 
-        # No `where` expression here – the previous one used unsupported fields.
-        # You can add a `where` later that only references:
-        #   reviewer.roles, reviewer.traits, request.roles, request.reason, request.system_annotations
+        # No 'where' expression here for now; earlier attempts used unsupported fields.
+        # If you want to gate reviewers later, we can add a predicate only referencing
+        # reviewer.roles / reviewer.traits / request.roles / request.reason / annotations.
       }
     }
   }
