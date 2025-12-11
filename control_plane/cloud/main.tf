@@ -76,7 +76,7 @@ resource "teleport_auth_preference" "main" {
 
   spec = {
     type          = "saml"
-    second_factor = "webauthn"
+    second_factor = "on" # allow OTP and WebAuthn
 
     webauthn = {
       rp_id = var.proxy_address
