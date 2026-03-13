@@ -1,394 +1,190 @@
-# teleport_terraform: Reference Architecture for Teleport Resource Demos
+# Teleport Terraform Templates
 
-This repository provides reusable Terraform modules and reference configurations for spinning up **Teleport self-hosted demos**, including:
+Terraform templates and reusable modules for demonstrating Teleport features on AWS. Designed for Solution Engineers running POCs, live demos, and prospect workshops.
 
-- Linux/SSH node access
-- Self-hosted MySQL/Postgres databases 
-- Windows infrastructure
-- Applications like Grafana
-- Machine ID automation
-- Desktop Access
+**Configuration:** use `export TF_VAR_*` for inputs rather than committing `terraform.tfvars` files.
 
-Modules are built for **Solutions Engineers** to rapidly demo Teleport features using disposable infrastructure tied to their own clusters.
+## Layout
 
----
-
-## Repository Layout
-
-### **Modules** - Reusable Infrastructure Components
-| Module | Purpose | Features |
-|--------|---------|----------|
-| **`mysql_instance/`** | MySQL + TLS + teleport.yaml bootstrap | TLS encryption, certificate auth, custom CA |
-| **`postgres_instance/`** | PostgreSQL + TLS + certificate auth | TLS encryption, certificate auth, custom users |
-| **`ssh_node/`** | SSH EC2 nodes with dynamic labels | Dynamic labels, enhanced recording, custom commands |
-| **`windows_instance/`** | Windows Desktop Access | RDP access, local user creation, domain joining |
-| **`app_grafana/`** | Application access to Grafana with JWT | JWT integration, SSO, dashboard access |
-| **`app_httpbin/`** | HTTP testing applications | Simple web application for testing |
-| **`machineid_ansible/`** | Machine ID + Ansible automation | Bot authentication, Ansible playbooks |
-| **`network/`** | VPC + security group templates | VPC, subnets, security groups, NAT gateway |
-| **`registration/`** | teleport_* resources (db, app) | Generic teleport_database and teleport_app |
-
-### **Data Plane** - Use Case Implementations
-| Use Case | Purpose | Based On |
-|----------|---------|----------|
-| **`mysql_self/`** | Self-hosted MySQL demo | [Database Access with Self-Hosted MySQL/MariaDB](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/) |
-| **`postgres_self/`** | Self-hosted PostgreSQL demo | [Database Access with Self-Hosted PostgreSQL](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/) |
-| **`ssh_getting_started/`** | Basic SSH access demo | [Server Access Getting Started Guide](https://goteleport.com/docs/enroll-resources/server-access/getting-started/) |
-| **`app_grafana/`** | Application access demo | [Protect a Web Application with Teleport](https://goteleport.com/docs/enroll-resources/application-access/getting-started/) |
-| **`app_httpbin/`** | Simple HTTP app demo | HTTP testing and demonstration |
-| **`windows_local/`** | Windows Desktop Access demo | [Configure access for local Windows users](https://goteleport.com/docs/enroll-resources/desktop-access/getting-started/) |
-| **`machineid_ansible/`** | Machine ID automation demo | [Machine ID with Ansible](https://goteleport.com/docs/enroll-resources/machine-id/access-guides/ansible/) |
-
-### **Environments** - Complete Integrated Deployments
-| Environment | Purpose |
-|-------------|---------|
-| **`dev/`** | Complete development environment |
-| **`prod/`** | Complete production environment |
-
-### **Control Plane** - Teleport Cluster Deployment Options
-| Deployment Type | Purpose |
-|-----------------|---------|
-| **`eks/`** | Kubernetes-based clusters |
-| **`linux/`** | Single-node clusters |
-| **`linux_proxypeers/`** | Proxy peering architecture |
-
----
-
-## Prerequisites
-
-- **[Terraform](https://developer.hashicorp.com/terraform/downloads)** >= 1.2.0
-- **[Teleport CLI (tsh, tctl)](https://goteleport.com/download/)** 
-- **AWS CLI** with configured credentials
-- **Teleport Enterprise cluster** (existing or deploy via `control_plane/`)
-
----
-
-## Quick Start
-
-### 1. Configure AWS Credentials
-
-```bash
-# Option 1: AWS CLI (recommended)
-aws configure
-
-# Option 2: Environment variables
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="us-east-2"
-
-# Verify access
-aws sts get-caller-identity
+```
+templates/teleport-terraform/
+├── control-plane/    # control plane blueprints (EKS, roles, SSO, plugins)
+├── data-plane/       # individual use case demos (one Teleport feature per template)
+├── profiles/         # multi-use-case compositions for prospect archetypes
+├── modules/          # shared building blocks (networking, nodes, databases, apps, desktop)
+└── tools/            # validation, smoke tests, and OPA policy checks
 ```
 
-### 2. Authenticate to Teleport
+**data-plane vs. profiles:**
+- **data-plane** — demo a single Teleport feature. Each template creates its own VPC.
+- **profiles** — demo multiple features for a specific prospect archetype. All use cases share one VPC, one `terraform apply`, one `terraform destroy`.
+
+---
+
+## Quick Start (any template)
 
 ```bash
-# Login to your cluster
-tsh login --proxy=your-cluster.teleport.com
-
-# Set up Terraform provider authentication
+tsh login --proxy=myorg.teleport.sh
 eval $(tctl terraform env)
 
-# This command sets temporary environment variables for the Teleport Terraform provider
-# Re-run this command if you encounter authentication errors during terraform operations
-```
+export TF_VAR_proxy_address=myorg.teleport.sh
+export TF_VAR_user=you@company.com
+export TF_VAR_teleport_version=18.7.1
 
-### 3. Set Demo Environment Variables
-
-**Use environment variables instead of .tfvars files** - this lets you quickly switch between demo scenarios without managing multiple configuration files:
-
-```bash
-# Core variables (set once)
-export TF_VAR_user="your-email@company.com"
-export TF_VAR_proxy_address="your-cluster.teleport.com"
-export TF_VAR_teleport_version="17.5.2" 
-export TF_VAR_region="us-east-2"
-
-# Environment-specific (change as needed)
-export TF_VAR_env="dev"        # or "prod", "staging", etc.
-```
-
-### 4. Deploy Your Demo
-
-```bash
-# Individual use case
-cd data_plane/mysql_self
-terraform init && terraform apply
-
-# Complete environment  
-cd environments/dev
+cd data-plane/server-access-ssh-getting-started   # or any template
 terraform init && terraform apply
 ```
 
-### 5. Verify Resources
+---
 
-```bash
-# Check registered resources
-tsh ls --labels=tier=dev
-tsh db ls
-tsh apps ls
+## Templates
 
-# Connect to resources
-tsh ssh user@hostname 
-tsh db connect mysql-dev --db-user=reader
-tsh apps login grafana-dev
-```
+### Control Plane
+
+| Template | Description |
+|---|---|
+| `control-plane/eks` | EKS-based Teleport control plane: infra, Teleport, RBAC, Slack plugin, Access Graph (5 layers). |
+| `control-plane/standalone` | Single-node EC2 Teleport cluster — fastest path to a working self-hosted cluster. |
+| `control-plane/proxy-peer` | Self-hosted Teleport cluster with proxy peering. |
+| `control-plane/cloud` | Teleport Cloud tenant configuration (Teleport provider only, no infra layer). |
+
+### Data Plane
+
+| Template | What It Shows | Tested |
+|---|---|---|
+| `server-access-ssh-getting-started` | SSH nodes on Amazon Linux 2023, session recording, dynamic host users | ✅ |
+| `server-access-ec2-autodiscovery` | EC2 auto-discovery via SSM + IAM joining — tag an instance, it enrolls automatically | — |
+| `application-access-grafana` | Grafana behind Teleport app service with JWT identity injection | ✅ |
+| `application-access-httpbin` | HTTPBin for inspecting Teleport-injected headers in real time | ✅ |
+| `application-access-aws-console` | AWS Console federation with per-role IAM assume via EC2 instance profile | ✅ |
+| `application-access-demo-panel` | Flask identity panel — shows the logged-in user's Teleport identity, roles, and traits | ✅ |
+| `database-access-postgres-self-managed` | Self-hosted PostgreSQL with TLS cert auth (no passwords) | ✅ |
+| `database-access-mysql-self-managed` | Self-hosted MySQL with TLS cert auth | ✅ |
+| `database-access-mongodb-self-managed` | Self-hosted MongoDB with TLS cert auth | ✅ |
+| `database-access-cassandra-self-managed` | Self-hosted Cassandra with TLS cert auth | ✅ |
+| `database-access-rds-mysql` | RDS MySQL with IAM authentication and auto user provisioning | ✅ |
+| `desktop-access-windows-local` | Windows Server via browser-based RDP (no AD, local users) | ✅ |
+| `machine-id-ansible` | Machine ID bot + Ansible host — certificate-based automation, no static keys | ✅ |
+| `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | ✅ |
+| `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | ✅ |
+
+### Profiles
+
+| Profile | Archetype | Cost | Tested |
+|---|---|---|---|
+| `profiles/dev-demo` | Developer "day in the life" — Bob (dev) + engineer, access requests, session locking | ~$5–7/day | ✅ |
+| `profiles/windows-mongodb-ssh` | Traditional enterprise — Windows + MongoDB + Linux SSH | ~$2–4/day | — |
+| `profiles/cloud-native-apps` | Modern cloud shop — Grafana + HTTPBin + RDS MySQL + AWS Console | ~$3–5/day | — |
+| `profiles/full-platform` | All-up POC — every Teleport feature in one deployment | ~$8–12/day | ✅ |
+
+See [profiles/README.md](profiles/README.md) for usage and demo flows.
 
 ---
 
-## Usage Models
+## Modules
 
-### 1. Individual Use Case Demo
+### Infrastructure
 
-```bash
-# Set your demo environment
-export TF_VAR_env="dev"
+| Module | Description |
+|---|---|
+| `network` | VPC, subnets (private + public), NAT gateway, security groups, optional DB subnet group. |
+| `ssh-node` | EC2 instances running Teleport SSH service with dynamic host user creation. |
+| `windows-instance` | Windows Server 2022 host pre-configured for Teleport Desktop Access. |
+| `desktop-service` | Linux host running `windows_desktop_service` — RDP proxy with full session recording. |
 
-# Deploy specific use case
-cd data_plane/mysql_self
-terraform init && terraform apply
+### Database
 
-# Demo database access
-tsh db ls --labels=tier=dev
-tsh db connect mysql-dev --db-user=reader
-```
+| Module | Description |
+|---|---|
+| `self-database` | Self-hosted database on EC2. Parameterized by `db_type`: `postgres`, `mysql`, `mongodb`, `cassandra`. Custom CA + TLS cert issued at deploy time, Teleport DB agent installed. |
+| `rds-mysql` | RDS MySQL with IAM auth, Teleport agent on EC2, auto user provisioning. |
 
-### 2. Complete Environment Demo
+### Application
 
-```bash
-# Deploy full environment
-cd environments/dev  
-terraform init && terraform apply
-```
+| Module | Description |
+|---|---|
+| `app-grafana` | Grafana server with Teleport app service. JWT header injection included. |
+| `app-httpbin` | HTTPBin server with Teleport app service. Good for showing injected headers. |
+| `app-aws-console-host` | EC2 host with instance profile for AWS Console role federation. |
+| `app-demo-panel` | Flask identity panel — reads `Teleport-Jwt-Assertion` header, shows user/roles/traits. |
 
-**This deploys:**
-- MySQL + PostgreSQL databases with TLS
-- SSH nodes with dynamic labels
-- Grafana application with JWT integration
-- Windows Desktop Access
-- All resources automatically registered with Teleport
+### Machine ID
 
----
+| Module | Description |
+|---|---|
+| `machineid-bot` | Creates a Teleport bot with a role, provision token, and optional bound keypair. |
+| `machineid-ansible` | EC2 host with tbot + Ansible — certificate-based SSH automation. |
+| `mcp-stdio-app` | EC2 host running Teleport app service for MCP stdio server discovery. |
 
-## Environment Variable Configuration
+### Discovery
 
-### Why Environment Variables Over .tfvars Files?
+| Module | Description |
+|---|---|
+| `ec2-discovery-agent` | Discovery Service agent that auto-enrolls tagged EC2 instances via SSM + IAM joining. |
+| `kube-discovery-agent` | Discovery Service agent that auto-enrolls tagged EKS clusters. |
+| `dynamic-registration` | Teleport resource registration helper — creates `teleport_db` or `teleport_app` resources. |
 
-**Advantages:**
-- **Quick environment switching** - change `TF_VAR_env` to switch demos
-- **No file management** - no need to maintain multiple .tfvars files
-- **Consistent across demos** - same variables work everywhere
-- **Secure** - no risk of committing sensitive data
-
-### Core Variables (Set Once)
-
-```bash
-# Your identity and cluster info
-export TF_VAR_user="engineer@company.com"      # For resource tagging
-export TF_VAR_proxy_address="cluster.teleport.com"  # Your Teleport cluster  
-export TF_VAR_teleport_version="17.5.2"       # Teleport version to install
-export TF_VAR_region="us-east-2"              # AWS region
-```
-
-### Demo-Specific Variables (Change As Needed)
-
-> Note: See Labeling and Discovery Pattern for RBAC
-
-```bash
-# Switch environments easily
-export TF_VAR_env="dev"           # Development demo
-export TF_VAR_env="prod"          # Production demo  
-```
-
-### Advanced Variables (Optional)
-
-```bash
-# Customize deployments
-export TF_VAR_agent_count="5"         # Number of SSH nodes
-```
+Each module has its own README with variables, outputs, and usage examples.
 
 ---
 
-## Labeling and Discovery Pattern
+## Tools
 
-Resources use consistent labels for dynamic discovery and RBAC:
+| Script | Description |
+|---|---|
+| `tools/terraform-templates-check.sh` | Runs `terraform fmt -check` and `terraform validate` on every template. Set `RUN_CONFTEST=1` for OPA checks. |
+| `tools/smoke-test.sh` | Deploy, verify via `tsh`, and destroy a single data-plane template end-to-end. |
+| `tools/smoke-test-all.sh` | Batch smoke test runner — `--quick`, `--full`, or `--templates=` modes. |
+| `tools/policy/` | OPA/Conftest policies enforcing IMDSv2, EBS encryption, no public IPs, label conventions. |
 
-```yaml
-# Applied automatically to all resources
-labels:
-  tier: dev                         # From TF_VAR_env
-```
+### Pre-commit Hooks
 
-**Teleport Role Integration:**
-```yaml
-# Example role using dynamic labels
-allow:
-  node_labels:
-    tier: ["dev", "staging"]
-  db_labels:
-    tier: ["dev"]
-  app_labels:
-    tier: ["dev"]
-```
-
-**Label-based Resource Discovery:**
 ```bash
-# List resources by environment
-tsh ls --labels=tier=dev
-tsh db ls --labels=tier=prod  
-tsh apps ls --labels=tier=staging
+brew install pre-commit terraform-docs tflint
+pip install checkov
+pre-commit install
+pre-commit run --all-files   # baseline check
 ```
+
+### GitHub Actions Deployment
+
+Deploy a full profile without local Terraform setup — useful for spinning up a demo environment from anywhere.
+
+**One-time setup** (run against your Teleport cluster):
+```bash
+# Create the CI bot with access to the Terraform provider
+tctl bots add github-ci --roles=terraform-provider
+
+# Create the GitHub join token (see docs/github-actions-setup.md for full YAML)
+tctl create github-join-token.yaml
+```
+
+**Required secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|---|---|
+| `AWS_ROLE_ARN` | IAM role ARN to assume via OIDC. See [GitHub OIDC docs](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services). |
+| `TELEPORT_PROXY` | Your Teleport Cloud proxy hostname (e.g., `myorg.teleport.sh`) |
+| `TF_STATE_BUCKET` | S3 bucket for Terraform state. Required for scheduled teardown to work. |
+
+**Optional secrets:**
+
+| Secret | Description |
+|---|---|
+| `SLACK_WEBHOOK_URL` | If set, the teardown workflow posts a summary to Slack after each run. |
+
+**Deploy:** Actions → **Deploy Teleport Demo** → Run workflow → pick a profile and environment.
+
+**Destroy:** Re-run the deploy workflow with the **Destroy** checkbox checked, or trigger **Scheduled Demo Teardown** manually to clean up all profiles at once.
+
+**Scheduled teardown:** Runs every Monday at 08:00 UTC and destroys any profiles that still have resources running. Requires `TF_STATE_BUCKET` to locate the state files.
+
+Note: workflows are only triggerable from the default branch (`main`).
 
 ---
 
-## Available Modules
+## Notes
 
-| Module | Purpose | Features |
-|--------|---------|----------|
-| **`ssh_node`** | Linux SSH access | Dynamic labels, enhanced recording, custom commands |
-| **`mysql_instance`** | Self-hosted MySQL | TLS encryption, certificate auth, custom CA |
-| **`postgres_instance`** | Self-hosted PostgreSQL | TLS encryption, certificate auth, custom users |
-| **`windows_instance`** | Windows Desktop Access | RDP access, local user creation, domain joining |
-| **`app_grafana`** | Grafana application | JWT integration, SSO, dashboard access |
-| **`app_httpbin`** | HTTP testing app | Simple web application for testing |
-| **`machineid_ansible`** | Machine ID automation | Bot authentication, Ansible playbooks |
-| **`network`** | AWS networking | VPC, subnets, security groups, NAT gateway |
-| **`registration`** | Resource registration | Generic teleport_database and teleport_app |
-
----
-
-## Workflow
-
-### Switching Between Demos
-
-```bash
-# Customer A demo
-export TF_VAR_env="dev"
-cd data_plane/mysql_self && terraform apply
-
-# Customer B demo  
-export TF_VAR_env="prod"
-cd data_plane/postgres_self && terraform apply
-
-# Full environment demo
-export TF_VAR_env="dev"
-cd environments/dev && terraform apply
-```
-
-### Demo Verification Commands
-
-```bash
-# Quick health check
-terraform output                    # Show deployment outputs
-tsh ls --labels=tier=$TF_VAR_env   # List SSH nodes
-tsh db ls                          # List databases
-tsh apps ls                        # List applications
-
-# Demo connections
-tsh ssh ubuntu@ssh-node            # SSH access
-tsh db connect database-name       # Database access
-tsh apps login app-name            # Application access
-```
-
-### Clean Up
-
-```bash
-# Clean up current demo
-terraform destroy
-
-# Or clean up specific environment
-cd environments/dev && terraform destroy
-```
-
----
-
-## Troubleshooting
-
-### Authentication Issues
-
-```bash
-# Verify AWS access
-aws sts get-caller-identity
-
-# Verify Teleport access  
-tsh status
-tctl status
-
-# Re-authenticate if needed
-eval $(tctl terraform env)
-```
-
-### Resource Registration Issues
-
-```bash
-# Check if resources are registered
-tctl inventory ls
-
-# Check agent connectivity
-tsh ls --labels=tier=$TF_VAR_env
-```
-
-### Common Variables Issues
-
-```bash
-# Check your environment variables
-env | grep TF_VAR
-
-# Required variables check
-echo "User: $TF_VAR_user"
-echo "Proxy: $TF_VAR_proxy_address" 
-echo "Version: $TF_VAR_teleport_version"
-echo "Region: $TF_VAR_region"
-echo "Env: $TF_VAR_env"
-```
-
----
-
-## Contributing
-
-Contributions welcome! Submit a PR or open an issue to:
-
-- **Add new resource modules** (MongoDB, Windows AD, Redis, etc.)
-- **Improve application demos** (Jenkins, Vault, Kubernetes Dashboard)
-- **Enhance automation** (CI/CD workflows, testing frameworks)
-- **Expand documentation** (runbooks, troubleshooting guides)
-
----
-
-## Advanced Usage
-
-### Control Plane Deployment
-
-Deploy your own Teleport clusters:
-
-```bash
-# EKS-based cluster
-cd control_plane/eks/1-eks-cluster && terraform apply
-cd control_plane/eks/2-kubernetes-config && terraform apply
-
-# Single-node Linux cluster
-cd control_plane/linux && terraform apply
-
-# Proxy peering architecture
-cd control_plane/linux_proxypeers && terraform apply
-```
-
-### Custom Module Development
-
-Follow the established patterns:
-
-```hcl
-# modules/your_module/main.tf
-terraform {
-  required_providers {
-    aws = { source = "hashicorp/aws" }
-    teleport = { source = "terraform.releases.teleport.dev/gravitational/teleport" }
-  }
-}
-
-# Use consistent variable names
-variable "env" { }
-variable "user" { }
-variable "proxy_address" { }
-variable "teleport_version" { }
-```
+- State is kept locally and gitignored. Each practitioner manages their own state.
+- The `application-access-aws-console` template requires `manage_account_a_roles=true` on first deploy in a fresh account to create the IAM target roles. See that template's README for the shared-account ownership pattern.
+- All templates tag resources with `teleport.dev/creator`, `env`, `team`, and `ManagedBy=terraform` for cost attribution and RBAC consistency.
